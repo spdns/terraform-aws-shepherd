@@ -1,0 +1,1 @@
+alter table ${table_name} add if NOT EXISTS partition(subscriber="${subscriber}", year=${year}, month=${month}, day=${day}, hour=${hour}) location "s3://${s3_bucket}/subscriber=${subscriber}/year=${year}/month=${month}/day=${day}/hour=${hour}/";

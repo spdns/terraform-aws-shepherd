@@ -1,0 +1,102 @@
+
+# Use workgroups to separate users, teams, applications, or workloads, and to set limits on amount of data each query or the
+# entire workgroup can process. You can also view query-related metrics in AWS CloudWatch.
+# https://docs.aws.amazon.com/athena/latest/ug/workgroups.html
+resource "aws_athena_workgroup" "shepherd" {
+  count = length(var.subscriber_buckets)
+
+  name        = format("%s-%s-workgroup-%s", var.project, var.environment, var.subscriber_buckets[count.index])
+  description = format("%s %s workgroup for %s", var.project, var.environment, var.subscriber_buckets[count.index])
+  state       = "ENABLED"
+
+  configuration {
+    enforce_workgroup_configuration    = true
+    publish_cloudwatch_metrics_enabled = true
+
+    result_configuration {
+      output_location = format("s3://%s/%s/", module.athena_results.id, var.subscriber_buckets[count.index])
+
+      encryption_configuration {
+        encryption_option = "SSE_S3"
+      }
+    }
+  }
+
+  tags = local.project_tags
+}
+
+locals {
+  table_name = "dns_data"
+}
+
+data "template_file" "create_table" {
+  count = length(var.subscriber_buckets)
+
+  template = file("${path.module}/templates/create_table_spec.sql.tmpl")
+  vars = {
+    database_name = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+    table_name    = local.table_name
+    s3_bucket     = var.subscriber_buckets[count.index]
+  }
+}
+
+resource "aws_athena_named_query" "create_table" {
+  count = length(var.subscriber_buckets)
+
+  name      = format("%s-%s-create-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  workgroup = aws_athena_workgroup.shepherd[count.index].id
+  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query     = data.template_file.create_table[count.index].rendered
+}
+
+data "template_file" "alter_table" {
+  count = length(var.subscriber_buckets)
+
+  template = file("${path.module}/templates/alter_table_spec.sql.tmpl")
+  vars = {
+    database_name = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+    table_name    = local.table_name
+    s3_bucket     = var.subscriber_buckets[count.index]
+    subscriber    = split("-", var.subscriber_buckets[count.index])[0]
+    year          = "2021"
+    month         = "1"
+    day           = "19"
+    hour          = "1611082800"
+  }
+}
+
+resource "aws_athena_named_query" "alter_table" {
+  count = length(var.subscriber_buckets)
+
+  name      = format("%s-%s-alter-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  workgroup = aws_athena_workgroup.shepherd[count.index].id
+  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query     = data.template_file.alter_table[count.index].rendered
+}
+
+resource "aws_athena_named_query" "repair_table" {
+  count = length(var.subscriber_buckets)
+
+  name      = format("%s-%s-repair-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  workgroup = aws_athena_workgroup.shepherd[count.index].id
+  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query     = format("MSCK REPAIR TABLE \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
+}
+
+resource "aws_athena_named_query" "date_range" {
+  count = length(var.subscriber_buckets)
+
+  name      = format("%s-%s-date-range", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  workgroup = aws_athena_workgroup.shepherd[count.index].id
+  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query     = format("select from_unixtime(min(hour)) as min_hour, from_unixtime(max(hour)) as max_hour from \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
+}
+
+resource "aws_athena_named_query" "num_records" {
+  count = length(var.subscriber_buckets)
+
+  name      = format("%s-%s-num-records", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  workgroup = aws_athena_workgroup.shepherd[count.index].id
+  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query     = format("select count(*) from \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
+}

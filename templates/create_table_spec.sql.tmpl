@@ -1,0 +1,65 @@
+create external table ${table_name} (
+  start_time bigint,
+  resolver string,
+  client_address string,
+  request_length int,
+  res_serial bigint,
+  elapsed_time int,
+  response_length int,
+  client_port int,
+  address_family int,
+  core_domain string,
+  client_qname string,
+  service_view string,
+  server_address string,
+  parent_policies array<string>,
+  policies array<string>,
+  rtt int,
+  flags array<string>,
+  meta_timestamp bigint,
+  meta_engine_type string,
+  meta_engine_version string,
+  meta_anonymizer_key_hash string,
+  meta_customer_name string,
+  meta_node_id string,
+  dns_opcode string,
+  dns_flags array<string>,
+  dns_rcode string,
+  dns_id bigint,
+  dns_authority array<map<string,string>>,
+  dns_additional array<map<string,string>>,
+  dns_question_rdtype string,
+  dns_question_name string,
+  dns_question_rdclass string,
+  dns_answer array<map<string,string>>,
+  dns_answer_ips array<
+  struct <
+    ip:string,
+    cc:string,
+    region:string,
+    city:string,
+    asnum:string,
+    asname:string>>,
+  dns_simple_answer string,
+  dns_simple_authority string,
+  tld string,
+  client_cc string,
+  client_region string,
+  client_city string,
+  client_asnum string,
+  client_asname string,
+  rec_type string,
+  data_version string
+)
+partitioned by
+(
+  subscriber string,
+  year int,
+  month int,
+  day int,
+  hour int
+)
+stored as parquet
+LOCATION
+  's3://${s3_bucket}/'
+;

@@ -26,6 +26,7 @@ module "shepherd" {
   ]
 
   tags = {
+    Project     = var.project
     Application = var.application
     Environment = var.environment
     Automation  = "Terraform"

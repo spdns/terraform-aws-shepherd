@@ -5,7 +5,7 @@ This module is used to configure AWS resources to work with the Shepherd project
 
 ## ETL Pipeline
 
-![etl-pipeline](./images/etl\_pipeline.png)
+![etl-pipeline](./images/etlpipeline.png)
 
 ## Usage
 

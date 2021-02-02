@@ -99,7 +99,7 @@ def athena_to_s3(athenaClient, params):
                 s3_path = response["QueryExecution"]["ResultConfiguration"][
                     "OutputLocation"
                 ]
-                filename = re.findall(".*\/(.*)", s3_path)[0]
+                filename = re.findall(r".*\/(.*)", s3_path)[0]
                 return filename
         time.sleep(1)
     return False

@@ -9,6 +9,7 @@ This module is used to configure AWS resources to work with the Shepherd project
 ## Usage
 
 Creates metric alarms for use with a Lambda Function
+
 * Success rate
 
 ```hcl
@@ -47,16 +48,13 @@ This project constitutes a work of the United States Government and is not subje
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
-| Name | Version |
-|------|---------|
-| terraform | ~> 0.13 |
-| aws | ~> 3.10.0 |
+No requirements.
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| aws | ~> 3.10.0 |
+| aws | n/a |
 | template | n/a |
 
 ## Inputs
@@ -67,6 +65,9 @@ This project constitutes a work of the United States Government and is not subje
 | environment | n/a | `string` | `"global"` | no |
 | project | n/a | `string` | `"shepherd"` | no |
 | region | n/a | `string` | `"us-gov-west-1"` | no |
+| shepherd\_users | The set of IAM user names to add to the 'shepherd\_users' group | `list(string)` | `[]` | no |
+| subscriber\_buckets | The set of AWS S3 buckets to subscribe too | `list(string)` | `[]` | no |
+| tags | The tags for the project | `map(string)` | `{}` | no |
 
 ## Outputs
 
@@ -91,5 +92,5 @@ Each database needs a table with the data. There is a saved query in each workgr
 
 There are two roles that must be passed to the vendor and appear as outputs:
 
-- shepherd_glue_role_arn: The role used by AWS Glue to do ETL on the data
-- shepherd_users_role_arn: The role used by IAM users to work with the resources configured by this module
+* shepherd_glue_role_arn: The role used by AWS Glue to do ETL on the data
+* shepherd_users_role_arn: The role used by IAM users to work with the resources configured by this module

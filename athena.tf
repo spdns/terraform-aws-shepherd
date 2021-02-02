@@ -41,7 +41,7 @@ CREATE OR REPLACE VIEW shepherd_all
 AS
 %{for index, db in local.database_names~}
 SELECT * FROM ${db}.${local.table_name}
-%{if index < length(local.database_names)-1 ~}
+%{if index < length(local.database_names) - 1~}
 UNION ALL ${index}
 %{endif~}
 %{endfor~}

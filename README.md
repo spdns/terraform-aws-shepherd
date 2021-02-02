@@ -16,13 +16,13 @@ module "shepherd" {
   source = "dod-iac/shepherd/aws"
 
   subscriber_buckets = [
-      bucket1,
-      bucket2,
+    "bucket1",
+    "bucket2",
   ]
 
   shepherd_users = [
-      iam_user1,
-      iam_user2,
+    "iam_user1",
+    "iam_user2",
   ]
 
   tags = {

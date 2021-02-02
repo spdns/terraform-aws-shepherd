@@ -26,7 +26,27 @@ resource "aws_athena_workgroup" "shepherd" {
 }
 
 locals {
-  table_name = "dns_data"
+  database_names = [for db in aws_glue_catalog_database.shepherd.*.id : split(":", db)[1]]
+  table_name     = "dns_data"
+}
+
+resource "aws_athena_named_query" "create_view" {
+  count = length(var.subscriber_buckets)
+
+  name      = format("%s-%s-create-view", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  workgroup = aws_athena_workgroup.shepherd[count.index].id
+  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query     = <<-EOT
+CREATE OR REPLACE VIEW shepherd_all
+AS
+%{for index, db in local.database_names~}
+SELECT * FROM ${db}.${local.table_name}
+%{if index < length(local.database_names)-1 ~}
+UNION ALL ${index}
+%{endif~}
+%{endfor~}
+GO
+EOT
 }
 
 data "template_file" "create_table" {

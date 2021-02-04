@@ -51,6 +51,8 @@ resource "aws_glue_job" "create_csv" {
     // Results
     "--outputBucket" = aws_s3_bucket.csv_results.id
     "--outputDir"    = var.subscriber_buckets[count.index]
+    // Salt
+    "--salt" = data.aws_ssm_parameter.salt.value
   }
 
   execution_property {

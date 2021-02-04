@@ -14,6 +14,7 @@ Required params:
     --athenaDatabase    | Athena database containing table or view from which to read
     --athenaTable       | Athena table or view from which to read
     --outputBucket      | S3 bucket where CSV results should be stored
+    --salt              | A random set of characters used as a salt in hashing algorithms
     One (but not both) of --dayRange or --maxHoursAgo is also required.
 Optional params:
     --dayRange          | Static range of days from which data should be read. Should be
@@ -64,6 +65,7 @@ REQUIRED_PARAMS = [
     "athenaTable",
     "outputBucket",
     "JOB_NAME",
+    "salt",
 ]
 OPTIONAL_PARAMS = [
     "dayRange",
@@ -297,6 +299,7 @@ def main(args):
         .coalesce(1)
     )
     write_frame = DynamicFrame.fromDF(df, gc, "transformed_frame")
+    # salt = args.salt
     s3_loc = "s3://%s/%s" % (args.outputBucket, args.outputDir)
     # data_sink =
     gc.write_dynamic_frame.from_options(

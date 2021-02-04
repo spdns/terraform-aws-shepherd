@@ -31,18 +31,22 @@ resource "aws_glue_security_configuration" "event_data" {
 }
 
 locals {
-  scripts_loc = "scripts/loadpartition.py"
+  script_loadpartition = "scripts/loadpartition.py"
+  script_create_csv    = "scripts/create_csv.py"
 }
 
 resource "aws_s3_bucket_object" "loadpartition" {
   bucket = module.glue_tmp_bucket.id
-  key    = local.scripts_loc
-  source = "${path.module}/${local.scripts_loc}"
+  key    = local.script_loadpartition
+  source = "${path.module}/${local.script_loadpartition}"
+  etag   = filemd5("${path.module}/${local.script_loadpartition}")
+}
 
-  # The filemd5() function is available in Terraform 0.11.12 and later
-  # For Terraform 0.11.11 and earlier, use the md5() function and the file() function:
-  # etag = "${md5(file("path/to/file"))}"
-  etag = filemd5("${path.module}/${local.scripts_loc}")
+resource "aws_s3_bucket_object" "create_csv" {
+  bucket = module.glue_tmp_bucket.id
+  key    = local.script_create_csv
+  source = "${path.module}/${local.script_create_csv}"
+  etag   = filemd5("${path.module}/${local.script_create_csv}")
 }
 
 resource "aws_glue_job" "shepherd" {

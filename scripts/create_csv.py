@@ -15,6 +15,7 @@ Required params:
     --athenaTable       | Athena table or view from which to read
     --outputBucket      | S3 bucket where CSV results should be stored
     --salt              | A random set of characters used as a salt in hashing algorithms
+    --ordinal           | An ordinal related to the subscriber
     One (but not both) of --dayRange or --maxHoursAgo is also required.
 Optional params:
     --dayRange          | Static range of days from which data should be read. Should be
@@ -66,6 +67,7 @@ REQUIRED_PARAMS = [
     "outputBucket",
     "JOB_NAME",
     "salt",
+    "ordinal",
 ]
 OPTIONAL_PARAMS = [
     "dayRange",
@@ -300,6 +302,7 @@ def main(args):
     )
     write_frame = DynamicFrame.fromDF(df, gc, "transformed_frame")
     # salt = args.salt
+    # ordinal = args.ordinal
     s3_loc = "s3://%s/%s" % (args.outputBucket, args.outputDir)
     # data_sink =
     gc.write_dynamic_frame.from_options(

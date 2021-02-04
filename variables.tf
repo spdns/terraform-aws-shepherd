@@ -36,6 +36,12 @@ variable "subscriber_buckets" {
   description = "The set of AWS S3 buckets to subscribe too"
 }
 
+variable "subscriber_ordinals" {
+  type        = list(number)
+  default     = []
+  description = "An ordinal for each subscriber bucket. Array must be the same length as subscriber buckets."
+}
+
 locals {
   project_tags = merge({
     Project     = var.project

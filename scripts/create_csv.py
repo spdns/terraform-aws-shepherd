@@ -47,6 +47,7 @@ Will fail if:
 """
 import sys
 import boto3
+import hashlib
 from types import SimpleNamespace
 from time import time
 from random import choice
@@ -243,6 +244,11 @@ def get_args():
     return args
 
 
+def hash_key(salt, ordinal, subscriber, receiver):
+    dk = hashlib.pbkdf2_hmac("sha512", subscriber + receiver, salt + ordinal, 100000)
+    return dk.hex()
+
+
 def main(args):
     if args.verbose:
         print("Got arguments: %s" % (args))
@@ -305,11 +311,8 @@ def main(args):
         .coalesce(1)
     )
     write_frame = DynamicFrame.fromDF(df, gc, "transformed_frame")
-    # salt = args.salt
-    # ordinal = args.ordinal
-    # subscriber = args.subscriber
-    # receiver = args.receiver
-    s3_loc = "s3://%s/%s" % (args.outputBucket, args.outputDir)
+    uniq = hash_key(args.salt, args.ordinal, args.subscriber, args.receiver)
+    s3_loc = "s3://%s/%s/%s" % (args.outputBucket, args.outputDir, uniq)
     # data_sink =
     gc.write_dynamic_frame.from_options(
         frame=write_frame,

@@ -50,10 +50,10 @@ resource "aws_glue_job" "create_csv" {
     "--athenaTable"    = local.table_name
     // Results
     "--outputBucket" = aws_s3_bucket.csv_results.id
-    "--outputDir"    = var.subscriber_buckets[count.index]
-    // Salt
-    "--salt"    = data.aws_ssm_parameter.salt.value
-    "--ordinal" = var.subscriber_ordinals[count.index]
+    "--outputDir"    = "csv"
+    "--salt"         = data.aws_ssm_parameter.salt.value
+    "--ordinal"      = var.subscriber_ordinals[count.index]
+    "--subscriber"   = var.subscriber_buckets[count.index]
   }
 
   execution_property {

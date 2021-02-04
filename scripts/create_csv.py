@@ -16,6 +16,7 @@ Required params:
     --outputBucket      | S3 bucket where CSV results should be stored
     --salt              | A random set of characters used as a salt in hashing algorithms
     --ordinal           | An ordinal related to the subscriber
+    --subscriber        | The name of the subscriber
     One (but not both) of --dayRange or --maxHoursAgo is also required.
 Optional params:
     --dayRange          | Static range of days from which data should be read. Should be
@@ -68,6 +69,7 @@ REQUIRED_PARAMS = [
     "JOB_NAME",
     "salt",
     "ordinal",
+    "subscriber",
 ]
 OPTIONAL_PARAMS = [
     "dayRange",
@@ -303,6 +305,7 @@ def main(args):
     write_frame = DynamicFrame.fromDF(df, gc, "transformed_frame")
     # salt = args.salt
     # ordinal = args.ordinal
+    # subscriber = args.subscriber
     s3_loc = "s3://%s/%s" % (args.outputBucket, args.outputDir)
     # data_sink =
     gc.write_dynamic_frame.from_options(

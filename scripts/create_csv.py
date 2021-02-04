@@ -43,14 +43,14 @@ Will fail if:
 """
 import sys
 import boto3
-from os import path
 from types import SimpleNamespace
-from time import time, sleep
+from time import time
 from random import choice
 from datetime import datetime, timedelta
 from string import ascii_lowercase, digits
 from botocore.exceptions import ClientError
-from awsglue.transforms import *
+
+# from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
@@ -195,7 +195,7 @@ def get_args():
     if args.get("maxHoursAgo") is not None:
         try:
             args["maxHoursAgo"] = int(args["maxHoursAgo"])
-        except:
+        except Exception:
             raise ValidationException(
                 "If set, --maxHoursAgo must be an integer. Value received %s"
                 % (args["maxHoursAgo"])
@@ -214,7 +214,7 @@ def get_args():
             end_dt = datetime.strptime(end, "%Y%m%d")
             args["startDt"] = start_dt
             args["endDt"] = end_dt
-        except:
+        except Exception:
             raise ValidationException(
                 "Invalid --day_range received: %s" % (args.day_range)
             )
@@ -251,6 +251,7 @@ def main(args):
         print("Verified bucket s3://%s exists and is accessible." % (args.outputBucket))
     # Get timeframe for pushdown predicate
     pushdown = ""
+    query = ""
     if args.maxHoursAgo:
         aligner = DAILY_ALIGNER if args.fullDays else HOURLY_ALIGNER
         min_hour = ((START_TIME - (3600 * args.maxHoursAgo)) // aligner) * aligner
@@ -297,7 +298,8 @@ def main(args):
     )
     write_frame = DynamicFrame.fromDF(df, gc, "transformed_frame")
     s3_loc = "s3://%s/%s" % (args.outputBucket, args.outputDir)
-    data_sink = gc.write_dynamic_frame.from_options(
+    # data_sink =
+    gc.write_dynamic_frame.from_options(
         frame=write_frame,
         connection_type="s3",
         connection_options={"path": s3_loc},

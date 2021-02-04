@@ -32,7 +32,6 @@ resource "aws_glue_security_configuration" "event_data" {
 
 locals {
   script_loadpartition = "scripts/loadpartition.py"
-  script_create_csv    = "scripts/create_csv.py"
 }
 
 resource "aws_s3_bucket_object" "loadpartition" {
@@ -40,13 +39,6 @@ resource "aws_s3_bucket_object" "loadpartition" {
   key    = local.script_loadpartition
   source = "${path.module}/${local.script_loadpartition}"
   etag   = filemd5("${path.module}/${local.script_loadpartition}")
-}
-
-resource "aws_s3_bucket_object" "create_csv" {
-  bucket = module.glue_tmp_bucket.id
-  key    = local.script_create_csv
-  source = "${path.module}/${local.script_create_csv}"
-  etag   = filemd5("${path.module}/${local.script_create_csv}")
 }
 
 resource "aws_glue_job" "shepherd" {
@@ -90,7 +82,7 @@ resource "aws_glue_job" "shepherd" {
     "--athenaWorkgroup"    = aws_athena_workgroup.shepherd[count.index].id
     // Database Details
     "--database"  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-    "--tableName" = "dns_data"
+    "--tableName" = local.table_name
     // Source Data
     "--s3Bucket" = var.subscriber_buckets[count.index]
     "--s3Folder" = "/"

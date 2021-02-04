@@ -19,11 +19,13 @@ module "glue_tmp_bucket" {
 }
 
 locals {
-  csv_bucket_name = format("%s-%s-%s-%s.dds.mil",
+  csv_bucket_name = format("%s-%s-%s-%s.%s",
     data.aws_iam_account_alias.current.account_alias,
     data.aws_region.current.name,
     var.project,
-  var.environment)
+    var.environment,
+    var.domain,
+  )
 }
 
 data "aws_iam_policy_document" "supplemental_policy" {

@@ -42,6 +42,11 @@ variable "subscriber_ordinals" {
   description = "An ordinal for each subscriber bucket. Array must be the same length as subscriber buckets."
 }
 
+variable "domain" {
+  type        = string
+  description = "Top Level Domain for serving CSV results."
+}
+
 locals {
   project_tags = merge({
     Project     = var.project

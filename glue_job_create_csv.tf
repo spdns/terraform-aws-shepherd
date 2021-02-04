@@ -54,6 +54,7 @@ resource "aws_glue_job" "create_csv" {
     "--salt"         = data.aws_ssm_parameter.salt.value
     "--ordinal"      = var.subscriber_ordinals[count.index]
     "--subscriber"   = var.subscriber_buckets[count.index]
+    "--receiver"     = var.subscriber_receiver[count.index]
   }
 
   execution_property {

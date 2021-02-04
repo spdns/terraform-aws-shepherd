@@ -42,6 +42,12 @@ variable "subscriber_ordinals" {
   description = "An ordinal for each subscriber bucket. Array must be the same length as subscriber buckets."
 }
 
+variable "subscriber_receiver" {
+  type        = list(number)
+  default     = []
+  description = "An email address for the receiver for each subscriber bucket. Array must be the same length as subscriber buckets."
+}
+
 variable "domain" {
   type        = string
   description = "Top Level Domain for serving CSV results."

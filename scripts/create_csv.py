@@ -17,6 +17,7 @@ Required params:
     --salt              | A random set of characters used as a salt in hashing algorithms
     --ordinal           | An ordinal related to the subscriber
     --subscriber        | The name of the subscriber
+    --receiver          | The email address of the receiver
     One (but not both) of --dayRange or --maxHoursAgo is also required.
 Optional params:
     --dayRange          | Static range of days from which data should be read. Should be
@@ -70,6 +71,7 @@ REQUIRED_PARAMS = [
     "salt",
     "ordinal",
     "subscriber",
+    "receiver",
 ]
 OPTIONAL_PARAMS = [
     "dayRange",
@@ -306,6 +308,7 @@ def main(args):
     # salt = args.salt
     # ordinal = args.ordinal
     # subscriber = args.subscriber
+    # receiver = args.receiver
     s3_loc = "s3://%s/%s" % (args.outputBucket, args.outputDir)
     # data_sink =
     gc.write_dynamic_frame.from_options(

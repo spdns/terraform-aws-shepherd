@@ -195,7 +195,7 @@ def get_args():
     # Optional parameters require slightly more effort.
     raw_params = sys.argv[PARAM_START_INDEX:]
     param_pairs = dict(
-        [raw_params[index].split("=") for index in range(0, len(raw_params))]
+        [raw_params[index : index + 2] for index in range(0, len(raw_params), 2)]
     )
     print("Input Params: %s" % param_pairs)
     for opt in OPTIONAL_PARAMS:

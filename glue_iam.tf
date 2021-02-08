@@ -96,6 +96,14 @@ data "aws_iam_policy_document" "glue_policy_document" {
 
   statement {
     actions = [
+      "glue:*",
+    ]
+    effect    = "Allow"
+    resources = aws_glue_catalog_database.shepherd[*].arn
+  }
+
+  statement {
+    actions = [
       "sns:ListTopics",
       "sns:GetTopicAttributes",
     ]

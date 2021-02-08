@@ -73,7 +73,8 @@
  * To write a variable use the [chamber](https://github.com/segmentio/chamber) tool:
  *
  * ```sh
- * chamber write shepherd-global salt <value>
+ * SALT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n 1)
+ * chamber write shepherd-global salt "${SALT}"
  * ```
  *
  */

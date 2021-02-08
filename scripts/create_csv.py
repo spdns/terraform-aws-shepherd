@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
 Glue Spark job to create a timeframe-bounded CSV of policy triggers from an Athena table.
 Each row identifies a single (epoch, policy, IP, DNS requested hostname) tuple.
@@ -45,22 +47,24 @@ Will fail if:
  * NEITHER dayRange nor maxHoursAgo was set, or
  * a job parameter is improperly formatted.
 """
+
 import sys
-import boto3
 import hashlib
-from types import SimpleNamespace
-from time import time
-from random import choice
 from datetime import datetime, timedelta
+from random import choice
 from string import ascii_lowercase, digits
+from time import time
+from types import SimpleNamespace
+
+import boto3
 from botocore.exceptions import ClientError
 
 # from awsglue.transforms import *
-from awsglue.utils import getResolvedOptions
-from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.dynamicframe import DynamicFrame
 from awsglue.job import Job
+from awsglue.utils import getResolvedOptions
+from pyspark.context import SparkContext
 from pyspark.sql.functions import explode, col, from_unixtime
 
 REQUIRED_PARAMS = [
@@ -191,8 +195,9 @@ def get_args():
     # Optional parameters require slightly more effort.
     raw_params = sys.argv[PARAM_START_INDEX:]
     param_pairs = dict(
-        [raw_params[index : index + 2] for index in range(0, len(raw_params), 2)]
+        [raw_params[index].split("=") for index in range(0, len(raw_params))]
     )
+    print("Input Params: %s" % param_pairs)
     for opt in OPTIONAL_PARAMS:
         args[opt] = param_pairs.get("--%s" % (opt), DEFAULTS.get(opt, None))
     # Validate exactly one of maxHoursAgo and dayRange is set.

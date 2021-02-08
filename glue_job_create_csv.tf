@@ -48,6 +48,8 @@ resource "aws_glue_job" "create_csv" {
     // Athena
     "--athenaDatabase" = var.csv_jobs[count.index]["Database"]
     "--athenaTable"    = local.table_name
+    // Date Range
+    "--maxHoursAgo" = "24" // 720 (30 days)
     // Results
     "--outputBucket" = aws_s3_bucket.csv_results.id
     "--outputDir"    = "csv"

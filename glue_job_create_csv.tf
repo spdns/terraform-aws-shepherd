@@ -57,6 +57,7 @@ resource "aws_glue_job" "create_csv" {
     "--ordinal"      = var.csv_jobs[count.index]["Ordinal"]
     "--subscriber"   = var.csv_jobs[count.index]["Subscriber"]
     "--receiver"     = var.csv_jobs[count.index]["Receiver"]
+    "--verbose"      = "true"
   }
 
   execution_property {

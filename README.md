@@ -92,7 +92,6 @@ No requirements.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | application | n/a | `string` | `"shepherd"` | no |
-| csv\_custom\_bucket\_policy | JSON formatted bucket policy to attach to the bucket. | `string` | `""` | no |
 | csv\_jobs | Details for each CSV job. See comments in code for details | `list(map(string))` | `[]` | no |
 | domain | Top Level Domain for serving CSV results. | `string` | `""` | no |
 | environment | n/a | `string` | `"global"` | no |

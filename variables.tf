@@ -40,7 +40,7 @@ variable "subscriber_buckets" {
  * [
  *   {
  *     Name       = "" // A unique name, no spaces only dashes
- *     Database   = "" // The database to pull from (or view?)
+ *     Bucket     = "" // The subscriber bucket
  *     Ordinal    = "" // An ordinal unique to this job. Modifying will change bucket location.
  *     Subscriber = "" // The name of the subscriber, ie sub.dod.dds. Modifying will change bucket location.
  *     Receiver   = "" // Comma separated point-of-contact emails. Modifying will change bucket location.

@@ -45,6 +45,7 @@ variable "subscriber_buckets" {
  *     Subscriber = "" // The name of the subscriber, ie sub.dod.dds. Modifying will change bucket location.
  *     Receiver   = "" // Comma separated point-of-contact emails. Modifying will change bucket location.
  *     Policies   = "" // Comma separated list of policies for job filtering
+ *     HoursAgo   = "" // The number of hours ago for the data to process
  *   }
  * ]
  */

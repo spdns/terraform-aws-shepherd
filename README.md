@@ -63,6 +63,19 @@ There are two roles that must be passed to the vendor and appear as outputs:
 * shepherd\_glue\_role\_arn: The role used by AWS Glue to do ETL on the data
 * shepherd\_users\_role\_arn: The role used by IAM users to work with the resources configured by this module
 
+### AWS SSM Parameters
+
+Some data needs to be placed in AWS SSM Parameter store. They are:
+
+* `salt`: A random 32 character string used as a salt for hashing algorithms
+
+To write a variable use the [chamber](https://github.com/segmentio/chamber) tool:
+
+```sh
+SALT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n 1)
+chamber write shepherd-global salt "${SALT}"
+```
+
 ## Requirements
 
 No requirements.
@@ -79,6 +92,9 @@ No requirements.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | application | n/a | `string` | `"shepherd"` | no |
+| csv\_custom\_bucket\_policy | JSON formatted bucket policy to attach to the bucket. | `string` | `""` | no |
+| csv\_jobs | Details for each CSV job. See comments in code for details | `list(map(string))` | `[]` | no |
+| domain | Top Level Domain for serving CSV results. | `string` | `""` | no |
 | environment | n/a | `string` | `"global"` | no |
 | project | n/a | `string` | `"shepherd"` | no |
 | region | n/a | `string` | `"us-gov-west-1"` | no |

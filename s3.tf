@@ -28,13 +28,10 @@ locals {
   )
 }
 
-data "aws_iam_policy_document" "supplemental_policy" {
-
-  source_json = var.csv_custom_bucket_policy
+data "aws_iam_policy_document" "csv_results_policy" {
 
   #
   # Enforce SSL/TLS on all transmitted objects
-  # We do this by extending the custom_bucket_policy
   #
   statement {
     sid    = "enforce-tls-requests-only"
@@ -59,7 +56,7 @@ resource "aws_s3_bucket" "csv_results" {
 
   bucket = local.csv_bucket_name
   acl    = "public-read"
-  policy = data.aws_iam_policy_document.supplemental_policy.json
+  policy = data.aws_iam_policy_document.csv_results_policy.json
   tags   = local.project_tags
 
   versioning {

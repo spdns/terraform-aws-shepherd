@@ -60,12 +60,6 @@ variable "domain" {
   description = "Top Level Domain for serving CSV results."
 }
 
-variable "csv_custom_bucket_policy" {
-  type        = string
-  default     = ""
-  description = "JSON formatted bucket policy to attach to the bucket."
-}
-
 locals {
   project_tags = merge({
     Project     = var.project

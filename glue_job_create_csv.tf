@@ -11,10 +11,10 @@ resource "aws_s3_bucket_object" "create_csv" {
 }
 
 resource "aws_glue_job" "create_csv" {
-  count = length(var.subscriber_buckets)
+  count = length(var.csv_jobs)
 
-  name        = format("%s-%s-%s-create-csv", var.project, var.environment, var.subscriber_buckets[count.index])
-  description = format("The %s %s job to create the CSV from shepherd data for %s", var.project, var.environment, var.subscriber_buckets[count.index])
+  name        = format("%s-%s-%s-create-csv", var.project, var.environment, replace(var.csv_jobs[count.index]["Name"], " ", "-"))
+  description = format("The %s %s job to create the CSV from shepherd data for %s", var.project, var.environment, var.csv_jobs[count.index]["Name"])
   role_arn    = aws_iam_role.glue_role.arn
 
   glue_version = "2.0"
@@ -46,15 +46,15 @@ resource "aws_glue_job" "create_csv" {
      */
     "--region" = data.aws_region.current.name
     // Athena
-    "--athenaDatabase" = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+    "--athenaDatabase" = var.csv_jobs[count.index]["Database"]
     "--athenaTable"    = local.table_name
     // Results
     "--outputBucket" = aws_s3_bucket.csv_results.id
     "--outputDir"    = "csv"
     "--salt"         = data.aws_ssm_parameter.salt.value
-    "--ordinal"      = var.subscriber_ordinals[count.index]
-    "--subscriber"   = var.subscriber_buckets[count.index]
-    "--receiver"     = var.subscriber_receiver[count.index]
+    "--ordinal"      = var.csv_jobs[count.index]["Ordinal"]
+    "--subscriber"   = var.csv_jobs[count.index]["Subscriber"]
+    "--receiver"     = var.csv_jobs[count.index]["Receiver"]
   }
 
   execution_property {
@@ -71,9 +71,9 @@ resource "aws_glue_job" "create_csv" {
 }
 
 resource "aws_glue_trigger" "start_workflow_create_csv" {
-  count = length(var.subscriber_buckets)
+  count = length(var.csv_jobs)
 
-  name     = format("%s %s schedule triggers etl job to create CSV for %s", var.project, var.environment, var.subscriber_buckets[count.index])
+  name     = format("%s %s schedule triggers etl job to create CSV for %s", var.project, var.environment, var.csv_jobs[count.index]["Name"])
   type     = "SCHEDULED"
   schedule = "cron(1 0/1 * * ? *)"
 

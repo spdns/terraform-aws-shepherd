@@ -36,21 +36,34 @@ variable "subscriber_buckets" {
   description = "The set of AWS S3 buckets to subscribe too"
 }
 
-variable "subscriber_ordinals" {
-  type        = list(number)
+/*
+ * [
+ *   {
+ *     Name       = "" // A unique name, no spaces only dashes
+ *     Database   = "" // The database to pull from (or view?)
+ *     Ordinal    = "" // An ordinal unique to this job. Modifying will change bucket location.
+ *     Subscriber = "" // The name of the subscriber, ie sub.dod.dds. Modifying will change bucket location.
+ *     Receiver   = "" // Comma separated point-of-contact emails. Modifying will change bucket location.
+ *     Policies   = "" // Comma separated list of policies for job filtering
+ *   }
+ * ]
+ */
+variable "csv_jobs" {
+  type        = list(map(string))
   default     = []
-  description = "An ordinal for each subscriber bucket. Array must be the same length as subscriber buckets."
-}
-
-variable "subscriber_receiver" {
-  type        = list(number)
-  default     = []
-  description = "An email address for the receiver for each subscriber bucket. Array must be the same length as subscriber buckets."
+  description = "Details for each CSV job. See comments in code for details"
 }
 
 variable "domain" {
   type        = string
+  default     = ""
   description = "Top Level Domain for serving CSV results."
+}
+
+variable "csv_custom_bucket_policy" {
+  type        = string
+  default     = ""
+  description = "JSON formatted bucket policy to attach to the bucket."
 }
 
 locals {

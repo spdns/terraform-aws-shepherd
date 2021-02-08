@@ -30,7 +30,7 @@ locals {
 
 data "aws_iam_policy_document" "supplemental_policy" {
 
-  source_json = var.custom_bucket_policy
+  source_json = var.csv_custom_bucket_policy
 
   #
   # Enforce SSL/TLS on all transmitted objects

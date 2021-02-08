@@ -95,8 +95,12 @@ data "aws_iam_policy_document" "glue_policy_document" {
     actions = [
       "glue:*",
     ]
-    effect    = "Allow"
-    resources = aws_glue_catalog_database.shepherd[*].arn
+    effect = "Allow"
+    resources = flatten([for db in aws_glue_catalog_database.shepherd : [
+      db.arn,
+      format("%s/%s", db.arn, local.table_name),
+      ]
+    ])
   }
 
   statement {

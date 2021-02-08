@@ -66,6 +66,18 @@ data "aws_iam_policy_document" "glue_policy_document" {
   }
 
   statement {
+    sid = "GlueCSVResults"
+    actions = [
+      "s3:*",
+    ]
+    effect = "Allow"
+    resources = [
+      aws_s3_bucket.csv_results.arn,
+      "${aws_s3_bucket.csv_results.arn}/*",
+    ]
+  }
+
+  statement {
     sid = "DecryptS3Files"
     actions = [
       "kms:Decrypt",

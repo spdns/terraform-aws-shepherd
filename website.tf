@@ -12,13 +12,13 @@ locals {
 resource "aws_s3_bucket_object" "index-html" {
   bucket  = aws_s3_bucket.csv_results.id
   key     = "index.html"
-  content = "<html><body>Hello</body></html>"
+  content = "<!DOCTYPE html><html><body>Hello</body></html>"
 }
 
 resource "aws_s3_bucket_object" "not-found-html" {
   bucket  = aws_s3_bucket.csv_results.id
   key     = "404.html"
-  content = "<html><body>Not Found</body></html>"
+  content = "<!DOCTYPE html><html><body>Not Found</body></html>"
 }
 
 data "aws_iam_policy_document" "csv_results_policy" {
@@ -31,31 +31,34 @@ data "aws_iam_policy_document" "csv_results_policy" {
       identifiers = ["*"]
     }
     actions = [
-      "s3:GetObject"
+      "s3:GetObject",
+      "s3:GetObjectVersion",
     ]
     resources = [
       "arn:${data.aws_partition.current.partition}:s3:::${local.csv_bucket_name}/*"
     ]
+    # For limiting to a specific IP address:
+    # https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html#example-bucket-policies-use-case-3
   }
 
-  # Enforce SSL/TLS on all transmitted objects
-  statement {
-    sid    = "enforce-tls-requests-only"
-    effect = "Deny"
-    principals {
-      type        = "AWS"
-      identifiers = ["*"]
-    }
-    actions = ["s3:*"]
-    resources = [
-      "arn:${data.aws_partition.current.partition}:s3:::${local.csv_bucket_name}/*"
-    ]
-    condition {
-      test     = "Bool"
-      variable = "aws:SecureTransport"
-      values   = ["false"]
-    }
-  }
+  // # Enforce SSL/TLS on all transmitted objects
+  // statement {
+  //   sid    = "enforce-tls-requests-only"
+  //   effect = "Deny"
+  //   principals {
+  //     type        = "AWS"
+  //     identifiers = ["*"]
+  //   }
+  //   actions = ["s3:*"]
+  //   resources = [
+  //     "arn:${data.aws_partition.current.partition}:s3:::${local.csv_bucket_name}/*"
+  //   ]
+  //   condition {
+  //     test     = "Bool"
+  //     variable = "aws:SecureTransport"
+  //     values   = ["false"]
+  //   }
+  // }
 }
 
 resource "aws_s3_bucket" "csv_results" {

@@ -291,8 +291,15 @@ def main(args):
     )
     sc = SparkContext()
     gc = GlueContext(sc)
+    sparkSession = gc.spark_session
     job = Job(gc)
     job.init(args.JOB_NAME, vars(args))
+
+    # Requestor pays
+    # https://aws.amazon.com/premiumsupport/knowledge-center/requester-pays-buckets-glue-emr-athena/
+    sparkSession._jsc.hadoopConfiguration().set("fs.s3.useRequesterPaysHeader", "true")
+    gc._jsc.hadoopConfiguration().set("fs.s3.useRequesterPaysHeader", "true")
+
     raw_data = gc.create_dynamic_frame.from_catalog(
         database=args.athenaDatabase,
         table_name=args.athenaTable,

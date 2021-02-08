@@ -55,10 +55,10 @@ variable "csv_jobs" {
   description = "Details for each CSV job. See comments in code for details"
 }
 
-variable "domain" {
+variable "csv_bucket_name" {
   type        = string
   default     = ""
-  description = "Top Level Domain for serving CSV results."
+  description = "The name of the S3 bucket hosting the publicly accessible CSV files. The name must be a valid DNS name. Best practice is to use a unique hash in the name, ie shepherd-<hash>.example.com"
 }
 
 locals {

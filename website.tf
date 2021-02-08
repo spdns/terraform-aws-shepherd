@@ -1,14 +1,4 @@
 
-locals {
-  csv_bucket_name = format("%s-%s-%s-%s.%s",
-    data.aws_iam_account_alias.current.account_alias,
-    data.aws_region.current.name,
-    var.project,
-    var.environment,
-    var.domain,
-  )
-}
-
 resource "aws_s3_bucket_object" "index-html" {
   bucket  = aws_s3_bucket.csv_results.id
   key     = "index.html"
@@ -32,10 +22,10 @@ data "aws_iam_policy_document" "csv_results_policy" {
     }
     actions = [
       "s3:GetObject",
-      "s3:GetObjectVersion",
+      // "s3:GetObjectVersion",
     ]
     resources = [
-      "arn:${data.aws_partition.current.partition}:s3:::${local.csv_bucket_name}/*"
+      "arn:${data.aws_partition.current.partition}:s3:::${var.csv_bucket_name}/*"
     ]
     # For limiting to a specific IP address:
     # https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html#example-bucket-policies-use-case-3
@@ -51,7 +41,7 @@ data "aws_iam_policy_document" "csv_results_policy" {
   //   }
   //   actions = ["s3:*"]
   //   resources = [
-  //     "arn:${data.aws_partition.current.partition}:s3:::${local.csv_bucket_name}/*"
+  //     "arn:${data.aws_partition.current.partition}:s3:::${var.csv_bucket_name}/*"
   //   ]
   //   condition {
   //     test     = "Bool"
@@ -63,7 +53,7 @@ data "aws_iam_policy_document" "csv_results_policy" {
 
 resource "aws_s3_bucket" "csv_results" {
 
-  bucket = local.csv_bucket_name
+  bucket = var.csv_bucket_name
   acl    = "public-read"
   policy = data.aws_iam_policy_document.csv_results_policy.json
   tags   = local.project_tags
@@ -101,6 +91,6 @@ resource "aws_s3_bucket" "csv_results" {
 
   logging {
     target_bucket = module.aws_logs.aws_logs_bucket
-    target_prefix = format("s3/%s/", local.csv_bucket_name)
+    target_prefix = format("s3/%s/", var.csv_bucket_name)
   }
 }

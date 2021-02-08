@@ -22,7 +22,7 @@ resource "aws_glue_job" "create_csv" {
   command {
     name            = "glueetl"
     python_version  = "3"
-    script_location = format("s3://%s/%s", module.glue_tmp_bucket.id, aws_s3_bucket_object.loadpartition.key)
+    script_location = format("s3://%s/%s", module.glue_tmp_bucket.id, aws_s3_bucket_object.create_csv.key)
   }
 
   // See https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-glue-arguments.html

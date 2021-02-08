@@ -250,7 +250,13 @@ def get_args():
 
 
 def hash_key(salt, ordinal, subscriber, receiver):
-    dk = hashlib.pbkdf2_hmac("sha512", subscriber + receiver, salt + ordinal, 100000)
+    salt_bytes = bytes(salt, "utf-8")
+    ordinal_bytes = bytes(ordinal, "utf-8")
+    subscriber_bytes = bytes(subscriber, "utf-8")
+    receiver_bytes = bytes(receiver, "utf-8")
+    dk = hashlib.pbkdf2_hmac(
+        "sha512", subscriber_bytes + receiver_bytes, salt_bytes + ordinal_bytes, 100000
+    )
     return dk.hex()
 
 
@@ -325,6 +331,8 @@ def main(args):
     write_frame = DynamicFrame.fromDF(df, gc, "transformed_frame")
     uniq = hash_key(args.salt, args.ordinal, args.subscriber, args.receiver)
     s3_loc = "s3://%s/%s/%s" % (args.outputBucket, args.outputDir, uniq)
+    if args.verbose:
+        print("S3 Results Location: %s" % s3_loc)
     # data_sink =
     gc.write_dynamic_frame.from_options(
         frame=write_frame,

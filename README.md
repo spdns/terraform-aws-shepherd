@@ -105,6 +105,7 @@ No requirements.
 
 | Name | Description |
 |------|-------------|
+| csv\_results\_bucket | shepherd csv results bucket |
 | shepherd\_glue\_role\_arn | shepherd glue role arn |
 | shepherd\_users\_role\_arn | shepherd-users role arn |
 

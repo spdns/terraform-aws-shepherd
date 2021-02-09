@@ -63,6 +63,20 @@
  *
  * * shepherd_glue_role_arn: The role used by AWS Glue to do ETL on the data
  * * shepherd_users_role_arn: The role used by IAM users to work with the resources configured by this module
+ *
+ * ### AWS SSM Parameters
+ *
+ * Some data needs to be placed in AWS SSM Parameter store. They are:
+ *
+ * * `salt`: A random 32 character string used as a salt for hashing algorithms
+ *
+ * To write a variable use the [chamber](https://github.com/segmentio/chamber) tool:
+ *
+ * ```sh
+ * SALT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n 1)
+ * chamber write shepherd-global salt "${SALT}"
+ * ```
+ *
  */
 data "aws_caller_identity" "current" {}
 data "aws_iam_account_alias" "current" {}

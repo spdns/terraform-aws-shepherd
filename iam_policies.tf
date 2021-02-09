@@ -24,7 +24,9 @@ data "aws_iam_policy_document" "shepherd_users" {
   statement {
     effect = "Allow"
     actions = [
-      "s3:*",
+      "s3:Get*",
+      "s3:List*",
+      "s3:Put*",
     ]
     resources = [
       module.athena_results.arn,
@@ -59,13 +61,12 @@ data "aws_iam_policy_document" "shepherd_users" {
     }
   }
 
-  // Allow full access to athena against the workgroup
   statement {
-    effect = "Allow"
     actions = [
-      "athena:*",
+      "athena:ListWorkGroups",
     ]
-    resources = aws_athena_workgroup.shepherd[*].arn
+    effect    = "Allow"
+    resources = ["*"]
     condition {
       test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"
@@ -75,16 +76,57 @@ data "aws_iam_policy_document" "shepherd_users" {
 
   // Allow full access to athena against the workgroup
   statement {
-    effect = "Allow"
     actions = [
+      "athena:BatchGet*",
+      "athena:CreateNamedQuery*",
       "athena:Get*",
       "athena:List*",
+      "athena:StartQueryExecution",
+      "athena:StopQueryExecution",
     ]
-    resources = ["*"]
+    effect    = "Allow"
+    resources = aws_athena_workgroup.shepherd[*].arn
     condition {
       test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"
       values   = ["true"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Project"
+      values   = [var.project]
+    }
+  }
+
+  // Allow full access to athena against the datacatalog
+  statement {
+    actions = [
+      "athena:GetDataCatalog",
+      "athena:GetDatabase",
+      "athena:ListDatabases",
+      "athena:GetTableMetadata",
+      "athena:ListDatabases",
+      "athena:ListTableMetadata",
+      "athena:ListTagsForResource",
+    ]
+    effect = "Allow"
+    resources = [
+      format("arn:%s:athena:%s:%s:datacatalog/%s",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+        data.aws_caller_identity.current.account_id,
+        "AwsDataCatalog"
+      ),
+    ]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Project"
+      values   = [var.project]
     }
   }
 
@@ -106,11 +148,28 @@ data "aws_iam_policy_document" "shepherd_users" {
   statement {
     effect = "Allow"
     actions = [
-      "glue:*",
+      "glue:GetDatabase",
+      "glue:GetDatabases",
+      "glue:GetPartition",
+      "glue:GetPartitions",
+      "glue:GetTable",
+      "glue:GetTables",
     ]
-    resources = [
-      "*",
-    ]
+    resources = flatten([
+      [format("arn:%s:glue:%s:%s:catalog",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+      data.aws_caller_identity.current.account_id)],
+      aws_glue_catalog_database.shepherd[*].arn,
+      [for bucket in var.subscriber_buckets : [
+        format("arn:%s:glue:%s:%s:table/%s/*",
+          data.aws_partition.current.partition,
+          data.aws_region.current.name,
+          data.aws_caller_identity.current.account_id,
+          replace(replace(format("%s-%s", local.glue_database_name_prefix, bucket), "-", "_"), ".", "_"),
+        )
+      ]],
+    ])
     condition {
       test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"

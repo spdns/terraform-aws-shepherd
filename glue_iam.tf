@@ -60,8 +60,20 @@ data "aws_iam_policy_document" "glue_policy_document" {
     resources = [
       module.athena_results.arn,
       "${module.athena_results.arn}/*",
+    ]
+  }
+
+  statement {
+    sid = "GlueCSVResults"
+    actions = [
+      "s3:*",
+    ]
+    effect = "Allow"
+    resources = [
       module.glue_tmp_bucket.arn,
       "${module.glue_tmp_bucket.arn}/*",
+      aws_s3_bucket.csv_results.arn,
+      "${aws_s3_bucket.csv_results.arn}/*",
     ]
   }
 
@@ -80,6 +92,28 @@ data "aws_iam_policy_document" "glue_policy_document" {
     ]
     effect    = "Allow"
     resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "glue:*",
+    ]
+    effect = "Allow"
+    resources = flatten([
+      [format("arn:%s:glue:%s:%s:catalog",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+      data.aws_caller_identity.current.account_id)],
+      aws_glue_catalog_database.shepherd[*].arn,
+      [for bucket in var.subscriber_buckets : [
+        format("arn:%s:glue:%s:%s:table/%s/*",
+          data.aws_partition.current.partition,
+          data.aws_region.current.name,
+          data.aws_caller_identity.current.account_id,
+          replace(replace(format("%s-%s", local.glue_database_name_prefix, bucket), "-", "_"), ".", "_"),
+        )
+      ]],
+    ])
   }
 
   statement {

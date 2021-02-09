@@ -92,8 +92,8 @@ No requirements.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | application | n/a | `string` | `"shepherd"` | no |
+| csv\_bucket\_name | The name of the S3 bucket hosting the publicly accessible CSV files. The name must be a valid DNS name. Best practice is to use a unique hash in the name, ie shepherd-<hash>.example.com | `string` | `""` | no |
 | csv\_jobs | Details for each CSV job. See comments in code for details | `list(map(string))` | `[]` | no |
-| domain | Top Level Domain for serving CSV results. | `string` | `""` | no |
 | environment | n/a | `string` | `"global"` | no |
 | project | n/a | `string` | `"shepherd"` | no |
 | region | n/a | `string` | `"us-gov-west-1"` | no |
@@ -105,7 +105,9 @@ No requirements.
 
 | Name | Description |
 |------|-------------|
-| csv\_results\_bucket | shepherd csv results bucket |
+| csv\_results\_bucket | The CSV results bucket name |
+| csv\_website\_domain | The CSV domain of the website endpoint, if the bucket is configured with a website. This is used to create Route 53 alias records. |
+| csv\_website\_endpoint | The CSV website endpoint, if the bucket is configured with a website. |
 | shepherd\_glue\_role\_arn | shepherd glue role arn |
 | shepherd\_users\_role\_arn | shepherd-users role arn |
 

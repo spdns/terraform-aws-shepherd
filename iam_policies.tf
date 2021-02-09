@@ -61,20 +61,6 @@ data "aws_iam_policy_document" "shepherd_users" {
     }
   }
 
-  // Allow full access to athena against the workgroup
-  statement {
-    effect = "Allow"
-    actions = [
-      "athena:*",
-    ]
-    resources = aws_athena_workgroup.shepherd[*].arn
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
-
   statement {
     actions = [
       "athena:ListWorkGroups",
@@ -98,10 +84,8 @@ data "aws_iam_policy_document" "shepherd_users" {
       "athena:StartQueryExecution",
       "athena:StopQueryExecution",
     ]
-    effect = "Allow"
-    resources = flatten([
-      aws_athena_workgroup.shepherd[*].arn,
-    ])
+    effect    = "Allow"
+    resources = aws_athena_workgroup.shepherd[*].arn
     condition {
       test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"
@@ -119,6 +103,7 @@ data "aws_iam_policy_document" "shepherd_users" {
     actions = [
       "athena:GetDataCatalog",
       "athena:GetDatabase",
+      "athena:ListDatabases",
       "athena:GetTableMetadata",
       "athena:ListDatabases",
       "athena:ListTableMetadata",
@@ -174,12 +159,15 @@ data "aws_iam_policy_document" "shepherd_users" {
         data.aws_region.current.name,
       data.aws_caller_identity.current.account_id)],
       aws_glue_catalog_database.shepherd[*].arn,
-      [
-        "arn:aws-us-gov:glue:us-gov-west-1:251551771478:table/shepherd_global_database_sub_dib_akamai_ehgjesek/dns_data",
-        "arn:aws-us-gov:glue:us-gov-west-1:251551771478:table/shepherd_global_database_sub_dod_dds_r8cf2j5q/dns_data",
-        "arn:aws-us-gov:glue:us-gov-west-1:251551771478:table/shepherd_global_database_sub_global_gl17apa7/dns_data",
-        "arn:aws-us-gov:glue:us-gov-west-1:251551771478:table/shepherd_global_database_sub_hhs_secops_f23sihm4/dns_data",
-      ],
+      [for bucket in var.subscriber_buckets : [
+        format("arn:%s:glue:%s:%s:table/%s/%s",
+          data.aws_partition.current.partition,
+          data.aws_region.current.name,
+          data.aws_caller_identity.current.account_id,
+          replace(replace(format("%s-%s", local.glue_database_name_prefix, bucket), "-", "_"), ".", "_"),
+          local.table_name
+        )
+      ]],
     ])
     condition {
       test     = "Bool"

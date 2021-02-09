@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import argparse
 import hashlib
 
 
@@ -15,10 +16,13 @@ def hash_key(salt, ordinal, subscriber, receiver):
 
 
 if __name__ == "__main__":
-    # fake data for testing
-    salt = "BFb7aJ5GR5TDmrOrZpfWh44kIGnS9QN2"
-    ordinal = "0"
-    subscriber = "sub.global"
-    receiver = "email1@example.com,email2@example.com"
-    uniq = hash_key(salt, ordinal, subscriber, receiver)
+
+    parser = argparse.ArgumentParser(description="Process some integers.")
+    parser.add_argument("--salt", help="salt value")
+    parser.add_argument("--ordinal", type=int, help="ordinal value")
+    parser.add_argument("--subscriber", help="subscriber value")
+    parser.add_argument("--receiver", help="receiver value")
+
+    args = parser.parse_args()
+    uniq = hash_key(args.salt, str(args.ordinal), args.subscriber, args.receiver)
     print(uniq)

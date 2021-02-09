@@ -392,6 +392,7 @@ def main(args):
         pages = paginator.paginate(Bucket=args.outputBucket, Prefix=prefix)
         for page in pages:
             for obj in page["Contents"]:
+                print(obj)
                 # Always get the last object created
                 if output_obj is None:
                     output_obj = obj

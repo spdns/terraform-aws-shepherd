@@ -92,7 +92,7 @@ No requirements.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | application | n/a | `string` | `"shepherd"` | no |
-| csv\_bucket\_name | The name of the S3 bucket hosting the publicly accessible CSV files. The name must be a valid DNS name. Best practice is to use a unique hash in the name, ie shepherd-<hash>.example.com | `string` | `""` | no |
+| csv\_bucket\_name | The name of the S3 bucket hosting the publicly accessible CSV files. The name must be a valid DNS name. Best practice is to use a unique hash in the name, ie UNIQUEHASH.example.com | `string` | `""` | no |
 | csv\_jobs | Details for each CSV job. See comments in code for details | `list(map(string))` | `[]` | no |
 | environment | n/a | `string` | `"global"` | no |
 | project | n/a | `string` | `"shepherd"` | no |

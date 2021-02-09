@@ -104,11 +104,16 @@ data "aws_iam_policy_document" "glue_policy_document" {
         data.aws_partition.current.partition,
         data.aws_region.current.name,
       data.aws_caller_identity.current.account_id)],
-      [for db in aws_glue_catalog_database.shepherd : [
-        db.arn,
-        format("%s/%s", db.arn, local.table_name),
-        ]
-    ]])
+      aws_glue_catalog_database.shepherd[*].arn,
+      [for bucket in var.subscriber_buckets : [
+        format("arn:%s:glue:%s:%s:table/%s/*",
+          data.aws_partition.current.partition,
+          data.aws_region.current.name,
+          data.aws_caller_identity.current.account_id,
+          replace(replace(format("%s-%s", local.glue_database_name_prefix, bucket), "-", "_"), ".", "_"),
+        )
+      ]],
+    ])
   }
 
   statement {

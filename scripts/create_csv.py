@@ -2,6 +2,7 @@
 
 """
 Glue Spark job to create a timeframe-bounded CSV of policy triggers from an Athena table.
+
 Each row identifies a single (epoch, policy, IP, DNS requested hostname) tuple.
 If a single request triggered multiple policies, then multiple rows will appended to the CSV
 (i.e., if a single request from IP 10.2.3.4 at 1612304100 for the domain malware.bad
@@ -9,8 +10,10 @@ If a single request triggered multiple policies, then multiple rows will appende
     two rows would be created:
         1612304100000000,2021-02-02,20:15,subscriber,sb-phishing-page-1,10.2.3.4,malware.bad
         1612304100000000,2021-02-02,20:15,subscriber,sb-infected-page-1,10.2.3.4,malware.bad
+
 Output fields:
     epoch_microsec,date_utc,time_utc,policy,client_ip,dns_question
+
 Required params:
     --region            | AWS region where Athena table or view resides. Should be us-gov-west-1
     --athenaDatabase    | Athena database containing table or view from which to read
@@ -21,6 +24,7 @@ Required params:
     --subscriber        | The name of the subscriber
     --receiver          | The email address of the receiver
     One (but not both) of --dayRange or --maxHoursAgo is also required.
+
 Optional params:
     --dayRange          | Static range of days from which data should be read. Should be
                           formatted as YYYYMMDD-YYYYMMDD (e.g., 20201230-20210119).
@@ -39,7 +43,14 @@ Optional params:
                           Default when not set: ,
     --outputDir         | S3 directory path (not including bucket name) where CSV results should be written.
                           Default when not set: PolicyTriggerCSV-<current_epoch>-<random_string>
+    --outputFilename    | When set, rename output file to given string.
+                          Directory location will be preserved.
+    --dontPreserveOutputDir | When set with --outputFilename, directory location will not be preserved
+                              (i.e., setting no directory pathing will place output file in top level of S3
+                              bucket, setting --dontPreserveOutputDir to some_dir/LatestTriggers.csv will
+                              place it in some_dir, etc).
     --verbose           | Prints more verbose output to Glue logs
+
 Will fail if:
  * athenaDatabase.athenaTable does not exist or cannot be accessed,
  * outputBucket does not exist or cannot be accessed,
@@ -86,11 +97,15 @@ OPTIONAL_PARAMS = [
     "delimiter",
     "outputDir",
     "verbose",
+    "outputFilename",
+    "dontPreserveOutputDir",
 ]
 PARAM_START_INDEX = 1
 START_TIME = int(time())
+
 HOURLY_ALIGNER = 60 * 60
 DAILY_ALIGNER = HOURLY_ALIGNER * 24
+
 # Boto keys
 B = {
     "QEID": "QueryExecutionId",
@@ -108,6 +123,7 @@ B = {
     "OUTPUT": "OutputLocation",
 }
 B = SimpleNamespace(**B)
+
 DEFAULTS = {
     "policies": "sb-phishing-page-2,sb-infected-page-2",
     "delimiter": ",",
@@ -122,22 +138,26 @@ class ValidationException(Exception):
 
 def validate_db(database, region, create_db=False):
     glue_client = boto3.client("glue", region_name=region)
+
     # Check to see if Athena database exists.
     db_resp = 0
     try:
         db_resp = glue_client.get_database(Name=database)[B.RESP_META][B.HTTP_STATUS]
     except ClientError as ce:
         db_resp = ce.response[B.RESP_META][B.HTTP_STATUS]
+
     # Only acceptable outcome: 200 (database exists and we can access it)
     if not db_resp == 200:
         raise ValidationException(
             "Could not verify database %s exists: %s" % (database, db_resp)
         )
+
     return True
 
 
 def validate_table(database, table, region):
     glue_client = boto3.client("glue", region_name=region)
+
     # Check to see if Athena table/view exists.
     table_resp = 0
     try:
@@ -146,6 +166,7 @@ def validate_table(database, table, region):
         ][B.HTTP_STATUS]
     except ClientError as ce:
         table_resp = ce.response[B.RESP_META][B.HTTP_STATUS]
+
     # Only acceptable outcome: 200 (table exists and we can access it)
     if not table_resp == 200:
         # Try to be helpful on the error type if we can.
@@ -163,12 +184,14 @@ def validate_table(database, table, region):
                 "Received unacceptable HTTP response code for table/view "
                 "%s.%s: %s. Desired response: 200" % (database, table, table_resp)
             )
+
     # No problems encountered if we made it this far
     return True
 
 
 def validate_bucket(bucket, region):
     s3_client = boto3.client("s3", region_name=region)
+
     # Check if bucket exists.
     # Only acceptable outcome: 200 (bucket exists and we can access it)
     http_resp = 0
@@ -181,17 +204,20 @@ def validate_bucket(bucket, region):
     # Catch non-200 responses.
     except ClientError as ce:
         http_resp = int(ce.response[B.ERROR][B.CODE])
+
     if not http_resp == 200:
         raise ValidationException(
             "Could not verify bucket s3://%s exists and is accessible: %s"
             % (bucket, http_resp)
         )
+
     return True
 
 
 def get_args():
     # Required parameters can be easily retrieved.
     args = getResolvedOptions(sys.argv, REQUIRED_PARAMS)
+
     # Optional parameters require slightly more effort.
     raw_params = sys.argv[PARAM_START_INDEX:]
     param_pairs = dict(
@@ -200,11 +226,13 @@ def get_args():
     print("Input Params: %s" % param_pairs)
     for opt in OPTIONAL_PARAMS:
         args[opt] = param_pairs.get("--%s" % (opt), DEFAULTS.get(opt, None))
+
     # Validate exactly one of maxHoursAgo and dayRange is set.
     if args.get("maxHoursAgo") and args.get("dayRange"):
         raise ValidationException("--maxHoursAgo and --dayRange cannot both be set.")
     elif not args.get("maxHoursAgo") and not args.get("dayRange"):
         raise ValidationException("Either --maxHoursAgo or --dayRange must be set.")
+
     # Validate maxHoursAgo param (if present).
     if args.get("maxHoursAgo") is not None:
         try:
@@ -220,6 +248,7 @@ def get_args():
             print(
                 "WARNING: maxHoursAgo set to 0. View will read only data for the current hourly partition."
             )
+
     # Validate dayRange param (if present).
     elif args.get("dayRange"):
         try:
@@ -236,7 +265,9 @@ def get_args():
             raise ValidationException(
                 "Invalid --dayRange received: start date cannot be later than end date."
             )
+
     args = SimpleNamespace(**args)
+
     # Validate we received only bucket names.
     if args.outputBucket.lower().startswith("s3://"):
         raise ValidationException(
@@ -246,6 +277,7 @@ def get_args():
         raise ValidationException(
             "Bucket params must not end with trailing slash (i.e., / )."
         )
+
     return args
 
 
@@ -263,6 +295,7 @@ def hash_key(salt, ordinal, subscriber, receiver):
 def main(args):
     if args.verbose:
         print("Got arguments: %s" % (args))
+
     # Verify source DB and table exist
     if validate_db(args.athenaDatabase, args.region) and args.verbose:
         print("Validated source database %s exists." % (args.athenaDatabase))
@@ -271,9 +304,11 @@ def main(args):
         and args.verbose
     ):
         print("Validated source table %s exists." % (args.athenaTable))
+
     # Verify output bucket exists and is accessible.
     if validate_bucket(args.outputBucket, args.region) and args.verbose:
         print("Verified bucket s3://%s exists and is accessible." % (args.outputBucket))
+
     # Get timeframe for pushdown predicate
     pushdown = ""
     query = ""
@@ -281,6 +316,7 @@ def main(args):
         aligner = DAILY_ALIGNER if args.fullDays else HOURLY_ALIGNER
         min_hour = ((START_TIME - (3600 * args.maxHoursAgo)) // aligner) * aligner
         pushdown = "(hour >= %s)" % (min_hour)
+
     elif args.dayRange:
         min_epoch = int((args.startDt - datetime.utcfromtimestamp(0)).total_seconds())
         # Hour boundary is first hourly epoch after last specified day.
@@ -290,11 +326,13 @@ def main(args):
             ).total_seconds()
         )
         query += "(hour >= %s and hour < %s)" % (min_epoch, max_epoch)
+
     # Get targeted policies.
     # Should be passed to SparkSQL as quoted strings
     policies = ", ".join(
         ["'%s'" % (pol) for pol in args.policies.split(args.delimiter) if pol]
     )
+
     sc = SparkContext()
     gc = GlueContext(sc)
     sparkSession = gc.spark_session
@@ -312,6 +350,7 @@ def main(args):
         transformation_ctx="raw_data",
         push_down_predicate=pushdown,
     )
+
     df = (
         raw_data.toDF()
         .filter("policies is not NULL")
@@ -328,12 +367,13 @@ def main(args):
         .orderBy("start_time")
         .coalesce(1)
     )
+
     write_frame = DynamicFrame.fromDF(df, gc, "transformed_frame")
+
     uniq = hash_key(args.salt, args.ordinal, args.subscriber, args.receiver)
     s3_loc = "s3://%s/%s/%s" % (args.outputBucket, args.outputDir, uniq)
     if args.verbose:
         print("S3 Results Location: %s" % s3_loc)
-    # data_sink =
     gc.write_dynamic_frame.from_options(
         frame=write_frame,
         connection_type="s3",
@@ -341,6 +381,41 @@ def main(args):
         format="csv",
         transformation_ctx="data_sink",
     )
+
+    # Rename output file, if requested.
+    if args.outputFilename:
+        output_fn = None
+        s3_client = boto3.resource("s3")
+        s3_bucket = s3_client.Bucket(args.outputBucket)
+        # Should only be a single output file in our job's directory.
+        for obj in s3_bucket.objects.filter(Prefix=args.outputDir):
+            output_fn = obj.key
+        if not output_fn:
+            raise Exception(
+                "Unable to find output file in s3://%s/%s"
+                % (args.outputBucket, args.outputDir)
+            )
+
+        rename_dir = "%s/" % (args.outputDir)
+        if args.dontPreserveOutputDir:
+            rename_dir = ""
+        copy_resp = s3_client.Object(
+            args.outputBucket, "%s%s" % (rename_dir, args.outputFilename)
+        ).copy_from(CopySource="%s/%s" % (args.outputBucket, output_fn))
+        if not copy_resp.get(B.RESP_META, {}).get(B.HTTP_STATUS, None) == 200:
+            raise Exception(
+                "Received non-200 response on copy attempt: %s" % (copy_resp)
+            )
+
+        delete_resp = s3_client.Object(args.outputBucket, output_fn).delete()
+        if not delete_resp.get(B.RESP_META, {}).get(B.HTTP_STATUS, None) == 204:
+            raise Exception(
+                "Received non-204 response on delete attempt: %s" % (delete_resp)
+            )
+
+        if args.verbose:
+            print("Renamed file to %s/%s." % (args.outputDir, args.outputFilename))
+
     job.commit()
 
 

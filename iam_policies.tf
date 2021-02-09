@@ -24,7 +24,9 @@ data "aws_iam_policy_document" "shepherd_users" {
   statement {
     effect = "Allow"
     actions = [
-      "s3:*",
+      "s3:Get*",
+      "s3:List*",
+      "s3:Put*",
     ]
     resources = [
       module.athena_results.arn,
@@ -158,20 +160,33 @@ data "aws_iam_policy_document" "shepherd_users" {
     }
   }
 
-  // statement {
-  //   effect = "Allow"
-  //   actions = [
-  //     "glue:*",
-  //   ]
-  //   resources = [
-  //     "*",
-  //   ]
-  //   condition {
-  //     test     = "Bool"
-  //     variable = "aws:MultiFactorAuthPresent"
-  //     values   = ["true"]
-  //   }
-  // }
+  statement {
+    effect = "Allow"
+    actions = [
+      "glue:GetDatabase",
+      "glue:GetPartition",
+      "glue:GetPartitions",
+      "glue:GetTable",
+    ]
+    resources = flatten([
+      [format("arn:%s:glue:%s:%s:catalog",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+      data.aws_caller_identity.current.account_id)],
+      aws_glue_catalog_database.shepherd[*].arn,
+      [
+        "arn:aws-us-gov:glue:us-gov-west-1:251551771478:table/shepherd_global_database_sub_dib_akamai_ehgjesek/dns_data",
+        "arn:aws-us-gov:glue:us-gov-west-1:251551771478:table/shepherd_global_database_sub_dod_dds_r8cf2j5q/dns_data",
+        "arn:aws-us-gov:glue:us-gov-west-1:251551771478:table/shepherd_global_database_sub_global_gl17apa7/dns_data",
+        "arn:aws-us-gov:glue:us-gov-west-1:251551771478:table/shepherd_global_database_sub_hhs_secops_f23sihm4/dns_data",
+      ],
+    ])
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
 
   statement {
     effect = "Allow"

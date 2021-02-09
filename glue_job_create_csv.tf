@@ -54,7 +54,7 @@ resource "aws_glue_job" "create_csv" {
     // Results
     "--outputBucket"   = aws_s3_bucket.csv_results.id
     "--outputDir"      = "csv"
-    "--outputFilename" = var.csv_job[cound.index]["OutputFilename"]
+    "--outputFilename" = var.csv_jobs[count.index]["OutputFilename"]
     "--salt"           = data.aws_ssm_parameter.salt.value
     "--ordinal"        = var.csv_jobs[count.index]["Ordinal"]
     "--subscriber"     = var.csv_jobs[count.index]["Subscriber"]
@@ -69,7 +69,7 @@ resource "aws_glue_job" "create_csv" {
   security_configuration = aws_glue_security_configuration.event_data.id
 
   number_of_workers = 10 // Using too many workers can cause write issues with AWS S3
-  timeout           = 10 // minutes
+  timeout           = 20 // minutes
   worker_type       = "G.1X"
 
   tags = local.project_tags

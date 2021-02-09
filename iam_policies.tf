@@ -73,18 +73,73 @@ data "aws_iam_policy_document" "shepherd_users" {
     }
   }
 
-  // Allow full access to athena against the workgroup
   statement {
-    effect = "Allow"
     actions = [
-      "athena:Get*",
-      "athena:List*",
+      "athena:ListWorkGroups",
     ]
+    effect    = "Allow"
     resources = ["*"]
     condition {
       test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"
       values   = ["true"]
+    }
+  }
+
+  // Allow full access to athena against the workgroup
+  statement {
+    actions = [
+      "athena:BatchGet*",
+      "athena:CreateNamedQuery*",
+      "athena:Get*",
+      "athena:List*",
+      "athena:StartQueryExecution",
+      "athena:StopQueryExecution",
+    ]
+    effect = "Allow"
+    resources = flatten([
+      aws_athena_workgroup.shepherd[*].arn,
+    ])
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Project"
+      values   = [var.project]
+    }
+  }
+
+  // Allow full access to athena against the datacatalog
+  statement {
+    actions = [
+      "athena:GetDataCatalog",
+      "athena:GetDatabase",
+      "athena:GetTableMetadata",
+      "athena:ListDatabases",
+      "athena:ListTableMetadata",
+      "athena:ListTagsForResource",
+    ]
+    effect = "Allow"
+    resources = [
+      format("arn:%s:athena:%s:%s:datacatalog/%s",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+        data.aws_caller_identity.current.account_id,
+        "AwsDataCatalog"
+      ),
+    ]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Project"
+      values   = [var.project]
     }
   }
 
@@ -103,20 +158,20 @@ data "aws_iam_policy_document" "shepherd_users" {
     }
   }
 
-  statement {
-    effect = "Allow"
-    actions = [
-      "glue:*",
-    ]
-    resources = [
-      "*",
-    ]
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
+  // statement {
+  //   effect = "Allow"
+  //   actions = [
+  //     "glue:*",
+  //   ]
+  //   resources = [
+  //     "*",
+  //   ]
+  //   condition {
+  //     test     = "Bool"
+  //     variable = "aws:MultiFactorAuthPresent"
+  //     values   = ["true"]
+  //   }
+  // }
 
   statement {
     effect = "Allow"

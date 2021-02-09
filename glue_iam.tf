@@ -28,8 +28,11 @@ data "aws_iam_policy_document" "glue_policy_document" {
   statement {
     sid = "ReadOnlyFromBuckets"
     actions = [
-      "s3:Get*",
-      "s3:List*",
+      "s3:GetBucketLocation",
+      "s3:GetBucketRequestPayment",
+      "s3:GetEncryptionConfiguration",
+      "s3:GetObject",
+      "s3:ListBucket",
     ]
     effect = "Allow"
     resources = flatten([for bucket in var.subscriber_buckets : [

@@ -403,9 +403,15 @@ def main(args):
                 "Unable to find output file in s3://%s"
                 % (os.path.join(args.outputBucket, prefix))
             )
+        elif args.verbose:
+            print(
+                "Renaming file s3://%s"
+                % (os.path.join(args.outputBucket, output_obj["Key"]))
+            )
 
         # Copy the object, which retains the original
-        copy_resp = s3_client.Object(
+        s3_resource = boto3.resource("s3", region_name=args.region)
+        copy_resp = s3_resource.Object(
             args.outputBucket, os.path.join(prefix, args.outputFilename)
         ).copy_from(CopySource=os.path.join(args.outputBucket, output_obj["Key"]))
 

@@ -39,13 +39,14 @@ variable "subscriber_buckets" {
 /*
  * [
  *   {
- *     Name       = "" // A unique name, no spaces only dashes
- *     Bucket     = "" // The subscriber bucket
- *     Ordinal    = "" // An ordinal unique to this job. Modifying will change bucket location.
- *     Subscriber = "" // The name of the subscriber, ie sub.dod.dds. Modifying will change bucket location.
- *     Receiver   = "" // Comma separated point-of-contact emails. Modifying will change bucket location.
- *     Policies   = "" // Comma separated list of policies for job filtering
- *     HoursAgo   = "" // The number of hours ago for the data to process
+ *     Name           = "" // A unique name, no spaces only dashes
+ *     Bucket         = "" // The subscriber bucket
+ *     Ordinal        = "" // An ordinal unique to this job. Modifying will change bucket location.
+ *     Subscriber     = "" // The name of the subscriber, ie sub.dod.dds. Modifying will change bucket location.
+ *     Receiver       = "" // Comma separated point-of-contact emails. Modifying will change bucket location.
+ *     Policies       = "" // Comma separated list of policies for job filtering
+ *     HoursAgo       = "" // The number of hours ago for the data to process
+ *     OutputFilename = "" // The final name of the fil
  *   }
  * ]
  */

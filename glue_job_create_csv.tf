@@ -52,13 +52,14 @@ resource "aws_glue_job" "create_csv" {
     "--maxHoursAgo" = var.csv_jobs[count.index]["HoursAgo"]
     "--fullDays"    = "true"
     // Results
-    "--outputBucket" = aws_s3_bucket.csv_results.id
-    "--outputDir"    = "csv"
-    "--salt"         = data.aws_ssm_parameter.salt.value
-    "--ordinal"      = var.csv_jobs[count.index]["Ordinal"]
-    "--subscriber"   = var.csv_jobs[count.index]["Subscriber"]
-    "--receiver"     = var.csv_jobs[count.index]["Receiver"]
-    "--verbose"      = "true"
+    "--outputBucket"   = aws_s3_bucket.csv_results.id
+    "--outputDir"      = "csv"
+    "--outputFilename" = var.csv_job[cound.index]["OutputFilename"]
+    "--salt"           = data.aws_ssm_parameter.salt.value
+    "--ordinal"        = var.csv_jobs[count.index]["Ordinal"]
+    "--subscriber"     = var.csv_jobs[count.index]["Subscriber"]
+    "--receiver"       = var.csv_jobs[count.index]["Receiver"]
+    "--verbose"        = "true"
   }
 
   execution_property {

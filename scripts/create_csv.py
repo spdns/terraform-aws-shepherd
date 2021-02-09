@@ -45,10 +45,6 @@ Optional params:
                           Default when not set: PolicyTriggerCSV-<current_epoch>-<random_string>
     --outputFilename    | When set, rename output file to given string.
                           Directory location will be preserved.
-    --dontPreserveOutputDir | When set with --outputFilename, directory location will not be preserved
-                              (i.e., setting no directory pathing will place output file in top level of S3
-                              bucket, setting --dontPreserveOutputDir to some_dir/LatestTriggers.csv will
-                              place it in some_dir, etc).
     --verbose           | Prints more verbose output to Glue logs
 
 Will fail if:
@@ -59,8 +55,9 @@ Will fail if:
  * a job parameter is improperly formatted.
 """
 
-import sys
 import hashlib
+import os.path
+import sys
 from datetime import datetime, timedelta
 from random import choice
 from string import ascii_lowercase, digits
@@ -98,7 +95,6 @@ OPTIONAL_PARAMS = [
     "outputDir",
     "verbose",
     "outputFilename",
-    "dontPreserveOutputDir",
 ]
 PARAM_START_INDEX = 1
 START_TIME = int(time())
@@ -371,7 +367,7 @@ def main(args):
     write_frame = DynamicFrame.fromDF(df, gc, "transformed_frame")
 
     uniq = hash_key(args.salt, args.ordinal, args.subscriber, args.receiver)
-    s3_loc = "s3://%s/%s/%s" % (args.outputBucket, args.outputDir, uniq)
+    s3_loc = "s3://%s" % (os.path.join(args.outputBucket, args.outputDir, uniq))
     if args.verbose:
         print("S3 Results Location: %s" % s3_loc)
     gc.write_dynamic_frame.from_options(
@@ -384,37 +380,49 @@ def main(args):
 
     # Rename output file, if requested.
     if args.outputFilename:
-        output_fn = None
-        s3_client = boto3.resource("s3")
-        s3_bucket = s3_client.Bucket(args.outputBucket)
-        # Should only be a single output file in our job's directory.
-        for obj in s3_bucket.objects.filter(Prefix=args.outputDir):
-            output_fn = obj.key
-        if not output_fn:
+
+        # This is the final object that will get renamed
+        output_obj = None
+
+        # It's possible that the job eventually creates a lot of objects.
+        # Get the most recent object from the prefix and rename it
+        s3_client = boto3.client("s3", region_name=args.region)
+        paginator = s3_client.get_paginator("list_objects_v2")
+        prefix = os.path.join(args.outputDir, uniq)
+        pages = paginator.paginate(Bucket=args.outputBucket, Prefix=prefix)
+        for page in pages:
+            for obj in page["Contents"]:
+                # Always get the last object created
+                if output_obj is None:
+                    output_obj = obj
+                elif obj.last_modified > output_obj.last_modified:
+                    output_obj = obj
+
+        if not output_obj:
             raise Exception(
-                "Unable to find output file in s3://%s/%s"
-                % (args.outputBucket, args.outputDir)
+                "Unable to find output file in s3://%s"
+                % (os.path.join(args.outputBucket, prefix))
             )
 
-        rename_dir = "%s/" % (args.outputDir)
-        if args.dontPreserveOutputDir:
-            rename_dir = ""
+        # Copy the object, which retains the original
         copy_resp = s3_client.Object(
-            args.outputBucket, "%s%s" % (rename_dir, args.outputFilename)
-        ).copy_from(CopySource="%s/%s" % (args.outputBucket, output_fn))
+            args.outputBucket, os.path.join(prefix, args.outputFilename)
+        ).copy_from(CopySource=os.path.join(args.outputBucket, output_obj.key))
+
         if not copy_resp.get(B.RESP_META, {}).get(B.HTTP_STATUS, None) == 200:
             raise Exception(
                 "Received non-200 response on copy attempt: %s" % (copy_resp)
             )
 
-        delete_resp = s3_client.Object(args.outputBucket, output_fn).delete()
-        if not delete_resp.get(B.RESP_META, {}).get(B.HTTP_STATUS, None) == 204:
-            raise Exception(
-                "Received non-204 response on delete attempt: %s" % (delete_resp)
-            )
-
         if args.verbose:
-            print("Renamed file to %s/%s." % (args.outputDir, args.outputFilename))
+            print(
+                "Renamed file to s3://%s"
+                % (
+                    os.path.join(
+                        args.outputBucket, args.outputDir, uniq, args.outputFilename
+                    )
+                )
+            )
 
     job.commit()
 

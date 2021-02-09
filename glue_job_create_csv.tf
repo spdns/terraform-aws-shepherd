@@ -48,6 +48,8 @@ resource "aws_glue_job" "create_csv" {
     // Athena
     "--athenaDatabase" = replace(replace(format("%s-%s", local.glue_database_name_prefix, var.csv_jobs[count.index]["Bucket"]), "-", "_"), ".", "_")
     "--athenaTable"    = local.table_name
+    // Policies
+    "--policies" = var.csv_jobs[count.index]["Policies"]
     // Date Range
     "--maxHoursAgo" = var.csv_jobs[count.index]["HoursAgo"]
     "--fullDays"    = "true"

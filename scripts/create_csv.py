@@ -392,14 +392,13 @@ def main(args):
         pages = paginator.paginate(Bucket=args.outputBucket, Prefix=prefix)
         for page in pages:
             for obj in page["Contents"]:
-                print(obj)
                 # Always get the last object created
                 if output_obj is None:
                     output_obj = obj
-                elif obj.last_modified > output_obj.last_modified:
+                elif obj["LastModified"] > output_obj["LastModified"]:
                     output_obj = obj
 
-        if not output_obj:
+        if output_obj is None:
             raise Exception(
                 "Unable to find output file in s3://%s"
                 % (os.path.join(args.outputBucket, prefix))
@@ -408,7 +407,7 @@ def main(args):
         # Copy the object, which retains the original
         copy_resp = s3_client.Object(
             args.outputBucket, os.path.join(prefix, args.outputFilename)
-        ).copy_from(CopySource=os.path.join(args.outputBucket, output_obj.key))
+        ).copy_from(CopySource=os.path.join(args.outputBucket, output_obj["Key"]))
 
         if not copy_resp.get(B.RESP_META, {}).get(B.HTTP_STATUS, None) == 200:
             raise Exception(

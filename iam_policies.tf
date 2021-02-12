@@ -148,6 +148,7 @@ data "aws_iam_policy_document" "shepherd_users" {
   statement {
     effect = "Allow"
     actions = [
+      "glue:BatchCreatePartition",
       "glue:GetDatabase",
       "glue:GetDatabases",
       "glue:GetPartition",

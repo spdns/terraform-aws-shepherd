@@ -54,9 +54,9 @@ data "template_file" "create_table" {
 
   template = file("${path.module}/templates/create_table_spec.sql.tmpl")
   vars = {
-    database_name = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-    table_name    = local.table_name
-    s3_bucket     = var.subscriber_buckets[count.index]
+    // Query cannot take a database name
+    table_name = local.table_name
+    s3_bucket  = var.subscriber_buckets[count.index]
   }
 }
 
@@ -74,14 +74,15 @@ data "template_file" "alter_table" {
 
   template = file("${path.module}/templates/alter_table_spec.sql.tmpl")
   vars = {
-    database_name = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-    table_name    = local.table_name
-    s3_bucket     = var.subscriber_buckets[count.index]
-    subscriber    = split("-", var.subscriber_buckets[count.index])[0]
-    year          = "2021"
-    month         = "1"
-    day           = "19"
-    hour          = "1611082800"
+    // Query cannot take a database name
+    table_name = local.table_name
+    s3_bucket  = var.subscriber_buckets[count.index]
+    subscriber = split("-", var.subscriber_buckets[count.index])[0]
+    // These are example values
+    year  = "2021"
+    month = "1"
+    day   = "19"
+    hour  = "1611082800"
   }
 }
 
@@ -100,7 +101,8 @@ resource "aws_athena_named_query" "repair_table" {
   name      = format("%s-%s-repair-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
   workgroup = aws_athena_workgroup.shepherd[count.index].id
   database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query     = format("MSCK REPAIR TABLE \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
+  // Query cannot take a database name
+  query = format("MSCK REPAIR TABLE %s", local.table_name)
 }
 
 resource "aws_athena_named_query" "date_range" {

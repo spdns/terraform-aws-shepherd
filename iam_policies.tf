@@ -78,7 +78,7 @@ data "aws_iam_policy_document" "shepherd_users" {
   statement {
     actions = [
       "athena:BatchGet*",
-      "athena:CreateNamedQuery*",
+      "athena:CreateNamedQuery",
       "athena:Get*",
       "athena:List*",
       "athena:StartQueryExecution",
@@ -103,8 +103,8 @@ data "aws_iam_policy_document" "shepherd_users" {
     actions = [
       "athena:GetDataCatalog",
       "athena:GetDatabase",
-      "athena:ListDatabases",
       "athena:GetTableMetadata",
+      "athena:ListDatabases",
       "athena:ListDatabases",
       "athena:ListTableMetadata",
       "athena:ListTagsForResource",
@@ -148,6 +148,8 @@ data "aws_iam_policy_document" "shepherd_users" {
   statement {
     effect = "Allow"
     actions = [
+      "glue:BatchCreatePartition",
+      "glue:CreateTable",
       "glue:GetDatabase",
       "glue:GetDatabases",
       "glue:GetPartition",

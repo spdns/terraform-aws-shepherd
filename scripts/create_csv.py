@@ -4,9 +4,9 @@
 Glue Spark job to create a timeframe-bounded CSV of policy triggers from an Athena table.
 
 Each row identifies a single (epoch, policy, IP, DNS requested hostname) tuple.
-If a single request triggered multiple policies, then multiple rows will appended to the CSV
+If a single request triggered multiple parent policies, then multiple rows will appended to the CSV
 (i.e., if a single request from IP 10.2.3.4 at 1612304100 for the domain malware.bad
-    triggers the pair of policies sb-phishing-page-1 and sb-infected-page-1, then
+    triggers the pair of parent policies sb-phishing-page-1 and sb-infected-page-1, then
     two rows would be created:
         1612304100000000,2021-02-02,20:15,subscriber,sb-phishing-page-1,10.2.3.4,malware.bad
         1612304100000000,2021-02-02,20:15,subscriber,sb-infected-page-1,10.2.3.4,malware.bad
@@ -36,7 +36,7 @@ Optional params:
     --fullDays          | When set in conjunction with --maxHoursAgo, all days in CSV
                           prior to the current day will be complete.
                           Setting to any value == True; not setting at all == False
-    --policies          | Policies to target for feed. Should be a delimiter-joined string
+    --parentPolicies    | Policies to target for feed. Should be a delimiter-joined string
                           such as a CSV string.
                           Default when not set: sb-phishing-page-2,sb-infected-page-2
     --delimiter         | Delimiter used to separate --policies parameter.
@@ -90,7 +90,7 @@ OPTIONAL_PARAMS = [
     "dayRange",
     "maxHoursAgo",
     "fullDays",
-    "policies",
+    "parentPolicies",
     "delimiter",
     "outputDir",
     "verbose",
@@ -121,7 +121,7 @@ B = {
 B = SimpleNamespace(**B)
 
 DEFAULTS = {
-    "policies": "sb-phishing-page-2,sb-infected-page-2",
+    "parentPolicies": "sb-phishing-page-2,sb-infected-page-2",
     "delimiter": ",",
     "outputDir": "PolicyTriggerCSV-%s-%s"
     % (START_TIME, "".join([choice(ascii_lowercase + digits) for ch in range(8)])),
@@ -323,10 +323,10 @@ def main(args):
         )
         query += "(hour >= %s and hour < %s)" % (min_epoch, max_epoch)
 
-    # Get targeted policies.
+    # Get targeted parentPolicies.
     # Should be passed to SparkSQL as quoted strings
-    policies = ", ".join(
-        ["'%s'" % (pol) for pol in args.policies.split(args.delimiter) if pol]
+    parentPolicies = ", ".join(
+        ["'%s'" % (pol) for pol in args.parentPolicies.split(args.delimiter) if pol]
     )
 
     sc = SparkContext()
@@ -349,7 +349,7 @@ def main(args):
 
     df = (
         raw_data.toDF()
-        .filter("policies is not NULL")
+        .filter("parent_policies is not NULL")
         .select(
             "start_time",
             from_unixtime(col("start_time") / 1000000, "yyyy-MM-dd").alias("datestamp"),
@@ -357,9 +357,9 @@ def main(args):
             "subscriber",
             "client_address",
             "dns_question_name",
-            explode("policies").alias("policy"),
+            explode("parent_policies").alias("policy"),
         )
-        .filter("policy in (%s)" % (policies))
+        .filter("policy in (%s)" % (parentPolicies))
         .orderBy("start_time")
         .coalesce(1)
     )

@@ -87,11 +87,47 @@ No requirements.
 | aws | n/a |
 | template | n/a |
 
+## Modules
+
+| Name | Source | Version |
+|------|--------|---------|
+| athena_results | trussworks/s3-private-bucket/aws | ~> 3.2.1 |
+| aws_logs | trussworks/logs/aws | ~> 10.0.0 |
+| glue_tmp_bucket | trussworks/s3-private-bucket/aws | ~> 3.2.1 |
+
+## Resources
+
+| Name |
+|------|
+| [aws_athena_named_query](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/athena_named_query) |
+| [aws_athena_workgroup](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/athena_workgroup) |
+| [aws_caller_identity](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) |
+| [aws_glue_catalog_database](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_catalog_database) |
+| [aws_glue_job](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_job) |
+| [aws_glue_security_configuration](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_security_configuration) |
+| [aws_glue_trigger](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_trigger) |
+| [aws_iam_account_alias](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_account_alias) |
+| [aws_iam_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_group) |
+| [aws_iam_group_membership](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_group_membership) |
+| [aws_iam_group_policy_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_group_policy_attachment) |
+| [aws_iam_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) |
+| [aws_iam_policy_document](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) |
+| [aws_iam_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) |
+| [aws_iam_role_policy_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) |
+| [aws_iam_user](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_user) |
+| [aws_partition](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/partition) |
+| [aws_region](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) |
+| [aws_s3_bucket](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) |
+| [aws_s3_bucket_object](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_object) |
+| [aws_ssm_parameter](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameter) |
+| [template_file](https://registry.terraform.io/providers/hashicorp/template/latest/docs/data-sources/file) |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | application | n/a | `string` | `"shepherd"` | no |
+| csv\_bucket\_allowed\_ip\_blocks | List of CIDR blocks allowed to access the CSV bucket | `list(string)` | <pre>[<br>  "0.0.0.0/0"<br>]</pre> | no |
 | csv\_bucket\_name | The name of the S3 bucket hosting the publicly accessible CSV files. The name must be a valid DNS name. Best practice is to use a unique hash in the name, ie UNIQUEHASH.example.com | `string` | `""` | no |
 | csv\_jobs | Details for each CSV job. See comments in code for details | `list(map(string))` | `[]` | no |
 | environment | n/a | `string` | `"global"` | no |
@@ -110,4 +146,3 @@ No requirements.
 | csv\_website\_endpoint | The CSV website endpoint, if the bucket is configured with a website. |
 | shepherd\_glue\_role\_arn | shepherd glue role arn |
 | shepherd\_users\_role\_arn | shepherd-users role arn |
-

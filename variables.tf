@@ -62,6 +62,12 @@ variable "csv_bucket_name" {
   description = "The name of the S3 bucket hosting the publicly accessible CSV files. The name must be a valid DNS name. Best practice is to use a unique hash in the name, ie UNIQUEHASH.example.com"
 }
 
+variable "csv_bucket_allowed_ip_blocks" {
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+  description = "List of CIDR blocks allowed to access the CSV bucket"
+}
+
 locals {
   project_tags = merge({
     Project     = var.project

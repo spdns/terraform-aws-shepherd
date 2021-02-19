@@ -27,8 +27,17 @@ data "aws_iam_policy_document" "csv_results_policy" {
     resources = [
       "arn:${data.aws_partition.current.partition}:s3:::${var.csv_bucket_name}/*"
     ]
+
     # For limiting to a specific IP address:
     # https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html#example-bucket-policies-use-case-3
+    # https://docs.aws.amazon.com/AmazonS3/latest/userguide/amazon-s3-policy-keys.html
+    # CIDR notation: http://www.rfc-editor.org/rfc/rfc4632.txt
+    condition {
+      test     = "IpAddress"
+      variable = "aws:SourceIp"
+      values   = var.csv_bucket_allowed_ip_blocks
+    }
+
   }
 
   // # Enforce SSL/TLS on all transmitted objects

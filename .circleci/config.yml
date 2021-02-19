@@ -35,8 +35,8 @@ jobs:
             chmod 755 terraform-docs-v${TERRAFORM_DOCS_VERSION}-linux-amd64
             mv terraform-docs-v${TERRAFORM_DOCS_VERSION}-linux-amd64 ~/bin/terraform-docs
           environment:
-            TERRAFORM_DOCS_VERSION: "0.9.1"
-            TERRAFORM_DOCS_SHA256SUM: "ceb4e7f291d43a5f7672f7ca9543075554bacd02cf850e6402e74f18fbf28f7e"
+            TERRAFORM_DOCS_VERSION: "0.11.0"
+            TERRAFORM_DOCS_SHA256SUM: "8e00ae5b2e3094127d6d52f51527534994e5a4173759bb351d90c91c81823d65"
       - run: echo 'export PATH=~/bin:$PATH' >> $BASH_ENV
       - run: scripts/update-docs
       - run: scripts/format-files

@@ -140,9 +140,9 @@ resource "aws_athena_named_query" "policy-freq" {
        and policies is not null
       order by policy)
       as SUBQUERY
-      where policy not like '%%safe%%'
-      and policy not like '%%schedule%%'
-      and policy not like '%%custom%%'
+      where policy not like '%safe%'
+      and policy not like '%schedule%'
+      and policy not like '%custom%'
       group by policy
       order by freq desc;
     EOT

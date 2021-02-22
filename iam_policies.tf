@@ -197,7 +197,7 @@ data "aws_iam_policy_document" "shepherd_users" {
   statement {
     effect = "Allow"
     actions = [
-      "sms:DescribeParameters",
+      "ssm:DescribeParameters",
     ]
     resources = ["*"]
   }
@@ -205,8 +205,8 @@ data "aws_iam_policy_document" "shepherd_users" {
   statement {
     effect = "Allow"
     actions = [
-      "sms:GetParameter*",
-      "sms:PutParameter",
+      "ssm:GetParameter*",
+      "ssm:PutParameter",
     ]
     resources = [
       format("arn:%s:ssm:%s:%s:parameter/%s-%s/*",
@@ -215,7 +215,7 @@ data "aws_iam_policy_document" "shepherd_users" {
         data.aws_caller_identity.current.account_id,
         var.project,
         var.environment,
-      )
+      ),
     ]
   }
 

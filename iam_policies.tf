@@ -197,6 +197,31 @@ data "aws_iam_policy_document" "shepherd_users" {
   statement {
     effect = "Allow"
     actions = [
+      "sms:DescribeParameters",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "sms:GetParameter*",
+      "sms:PutParameter",
+    ]
+    resources = [
+      format("arn:%s:ssm:%s:%s:parameter/%s-%s/*",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+        data.aws_caller_identity.current.account_id,
+        var.project,
+        var.environment,
+      )
+    ]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
       "tag:*",
     ]
     resources = [

@@ -123,27 +123,70 @@ resource "aws_athena_named_query" "num_records" {
   query     = format("select count(*) from \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
 }
 
-# Example Athena query using partition filter provided by Kelli
-resource "aws_athena_named_query" "policy-freq" {
+# Policy Freqs last 720 hours HHS
+resource "aws_athena_named_query" "hhs-policy-freq-720" {
   count     = length(var.subscriber_buckets)
-  name      = format("%s-%s-policy-freq", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  name      = format("%s-%s-hhs-policy-freq", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Policy Freqs last 720 hours HHS"
   workgroup = aws_athena_workgroup.shepherd[count.index].id
   database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
   query     = <<-EOT
-      select policy, count(*) as freq from
-      (SELECT array_join(policies, ' ') AS policy
-      from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
-      where rec_type='base'
-       and subscriber='sub.hhs.secops'
-        and dns_question_rdtype='A'
+        select policy, count(*) as freq from
+        (select array_join(parent_policies, ' ') AS policy
+        from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
+        where subscriber='sub.hhs.secops'
         and hour >= (cast(to_unixtime(now()) as integer) -  (60 * 60 * 24 * 3))
-       and policies is not null
-      order by policy)
-      as SUBQUERY
-      where policy not like '%safe%'
-      and policy not like '%schedule%'
-      and policy not like '%custom%'
-      group by policy
-      order by freq desc;
+        and parent_policies is not null
+        )
+
+        where policy in ('sb-malware-infections-block', 'sb-infected-page', 'sb-phishing-page', 'sb-safe-search', 'sb-safe-search-youtube', 'sb-restricted-schedule', 'sb-whitelist')
+        group by policy
+        order by freq desc;
+    EOT
+}
+
+# HHS actionable last 720 hours
+resource "aws_athena_named_query" "hhs-actionable-720" {
+  count     = length(var.subscriber_buckets)
+  name      = format("%s-%s-hhs-actionable", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Actionable HHS last 720 hours"
+  workgroup = aws_athena_workgroup.shepherd[count.index].id
+  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query     = <<-EOT
+  select client_address, policy, datetime from
+  (SELECT
+  client_address, from_unixtime("start_time"*0.000001)  as datetime, policy
+  from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
+  CROSS JOIN UNNEST(parent_policies) AS t (policy)
+  where rec_type='base'
+  and subscriber='sub.hhs.secops'
+  and parent_policies is not null
+  and to_unixtime(now())-(start_time *0.000001) <= 60*60*720
+  )
+  where policy = 'sb-malware-infections-block'
+  order by datetime, policy
+    EOT
+}
+
+# HHS interesting last 720 hours
+resource "aws_athena_named_query" "hhs-interesting-720" {
+  count     = length(var.subscriber_buckets)
+  name      = format("%s-%s-hhs-interesting", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Actionable HHS last 720 hours"
+  workgroup = aws_athena_workgroup.shepherd[count.index].id
+  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query     = <<-EOT
+  select client_address, policy, datetime from
+  (SELECT
+  client_address, from_unixtime("start_time"*0.000001)  as datetime, policy
+  from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
+  CROSS JOIN UNNEST(parent_policies) AS t (policy)
+  where rec_type='base'
+  and subscriber='sub.hhs.secops'
+  and parent_policies is not null
+  and to_unixtime(now())-(start_time *0.000001) <= 60*60*720
+  )
+  where policy in ('sb-infected-page', 'sb-phishing-page', 'sb-safe-search', 'sb-safe-search-youtube', 'sb-restricted-schedule', 'sb-whitelist')
+  order by datetime, policy
     EOT
 }

@@ -125,12 +125,12 @@ resource "aws_athena_named_query" "num_records" {
 
 # Policy Freqs last 720 hours HHS
 resource "aws_athena_named_query" "hhs-policy-freq-720" {
-  count     = length(var.subscriber_buckets)
-  name      = format("%s-%s-hhs-policy-freq", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  count       = length(var.subscriber_buckets)
+  name        = format("%s-%s-hhs-policy-freq", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
   description = "Policy Freqs last 720 hours HHS"
-  workgroup = aws_athena_workgroup.shepherd[count.index].id
-  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query     = <<-EOT
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = <<-EOT
         select policy, count(*) as freq from
         (select array_join(parent_policies, ' ') AS policy
         from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
@@ -147,12 +147,12 @@ resource "aws_athena_named_query" "hhs-policy-freq-720" {
 
 # HHS actionable last 720 hours
 resource "aws_athena_named_query" "hhs-actionable-720" {
-  count     = length(var.subscriber_buckets)
-  name      = format("%s-%s-hhs-actionable", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  count       = length(var.subscriber_buckets)
+  name        = format("%s-%s-hhs-actionable", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
   description = "Actionable HHS last 720 hours"
-  workgroup = aws_athena_workgroup.shepherd[count.index].id
-  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query     = <<-EOT
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = <<-EOT
   select client_address, policy, datetime from
   (SELECT
   client_address, from_unixtime("start_time"*0.000001)  as datetime, policy
@@ -170,12 +170,12 @@ resource "aws_athena_named_query" "hhs-actionable-720" {
 
 # HHS interesting last 720 hours
 resource "aws_athena_named_query" "hhs-interesting-720" {
-  count     = length(var.subscriber_buckets)
-  name      = format("%s-%s-hhs-interesting", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  count       = length(var.subscriber_buckets)
+  name        = format("%s-%s-hhs-interesting", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
   description = "Actionable HHS last 720 hours"
-  workgroup = aws_athena_workgroup.shepherd[count.index].id
-  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query     = <<-EOT
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = <<-EOT
   select client_address, policy, datetime from
   (SELECT
   client_address, from_unixtime("start_time"*0.000001)  as datetime, policy

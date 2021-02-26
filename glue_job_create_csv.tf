@@ -1,6 +1,6 @@
 
 locals {
-  script_create_csv = "scripts/create_csv_all_fields.py" // Updated script location
+  script_create_csv = "scripts/create_csv.py"
 }
 
 resource "aws_s3_bucket_object" "create_csv" {
@@ -17,10 +17,10 @@ resource "aws_glue_job" "create_csv" {
   description = format("The %s %s job to create the CSV from shepherd data for %s", var.project, var.environment, var.csv_jobs[count.index]["Name"])
   role_arn    = aws_iam_role.glue_role.arn
 
-  glue_version = "1.0"
+  glue_version = "2.0"
 
   command {
-    name            = "pythonshell"
+    name            = "glueetl"
     python_version  = "3"
     script_location = format("s3://%s/%s", module.glue_tmp_bucket.id, aws_s3_bucket_object.create_csv.key)
   }
@@ -62,9 +62,6 @@ resource "aws_glue_job" "create_csv" {
     "--subscriber"     = var.csv_jobs[count.index]["Subscriber"]
     "--receiver"       = var.csv_jobs[count.index]["Receiver"]
     "--verbose"        = "true"
-    // Updates to all-fields version of job
-    "--deleteMetadataFile" = "true"   // Optional, but recommended
-    "--workgroup"      = "primary"    // May require adjustment depending on workgroup settings
   }
 
   execution_property {
@@ -73,12 +70,9 @@ resource "aws_glue_job" "create_csv" {
 
   security_configuration = aws_glue_security_configuration.event_data.id
 
-  // number_of_workers and worker_type not used in new pythonshell job type
-  // They are replaced by the max_capacity argument, which can ONLY be 0.0625 or 1.0
-  // number_of_workers = 10 // Using too many workers can cause write issues with AWS S3
+  number_of_workers = 10 // Using too many workers can cause write issues with AWS S3
   timeout           = 20 // minutes
-  // worker_type       = "G.1X"
-  max_capacity = 0.0625 // Update to 1.0 if needed, but most of the work happens in Athena, not Glue
+  worker_type       = "G.1X"
 
   tags = local.project_tags
 }

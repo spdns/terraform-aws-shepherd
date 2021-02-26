@@ -5,7 +5,6 @@ repos:
     hooks:
       - id: check-merge-conflict
       - id: check-yaml
-      # - id: detect-aws-credentials
       - id: detect-private-key
       - id: no-commit-to-branch
       - id: requirements-txt-fixer

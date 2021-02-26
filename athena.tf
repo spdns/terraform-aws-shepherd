@@ -135,7 +135,7 @@ resource "aws_athena_named_query" "hhs-policy-freq-720" {
         (select array_join(parent_policies, ' ') AS policy
         from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
         where subscriber='sub.hhs.secops'
-        and hour >= (cast(to_unixtime(now()) as integer) -  (60 * 60 * 24 * 3))
+        and (((cast(to_unixtime(now()) as integer) / 3600) * 3600) - hour) <= 60*60*720
         and parent_policies is not null
         )
 
@@ -158,10 +158,9 @@ resource "aws_athena_named_query" "hhs-actionable-720" {
   client_address, from_unixtime("start_time"*0.000001)  as datetime, policy
   from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
   CROSS JOIN UNNEST(parent_policies) AS t (policy)
-  where rec_type='base'
-  and subscriber='sub.hhs.secops'
+  where subscriber='sub.hhs.secops'
   and parent_policies is not null
-  and to_unixtime(now())-(start_time *0.000001) <= 60*60*720
+  and (((cast(to_unixtime(now()) as integer) / 3600) * 3600) - hour) <= 60*60*720
   )
   where policy = 'sb-malware-infections-block'
   order by datetime, policy
@@ -181,10 +180,9 @@ resource "aws_athena_named_query" "hhs-interesting-720" {
   client_address, from_unixtime("start_time"*0.000001)  as datetime, policy
   from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
   CROSS JOIN UNNEST(parent_policies) AS t (policy)
-  where rec_type='base'
-  and subscriber='sub.hhs.secops'
+  where subscriber='sub.hhs.secops'
   and parent_policies is not null
-  and to_unixtime(now())-(start_time *0.000001) <= 60*60*720
+  and (((cast(to_unixtime(now()) as integer) / 3600) * 3600) - hour) <= 60*60*720
   )
   where policy in ('sb-infected-page', 'sb-phishing-page', 'sb-safe-search', 'sb-safe-search-youtube', 'sb-restricted-schedule', 'sb-whitelist')
   order by datetime, policy

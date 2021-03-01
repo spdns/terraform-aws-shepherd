@@ -139,7 +139,7 @@ WHERE parent_policies is NOT null
         AND subscriber IS NOT NULL
         AND hour >= (to_unixtime(now()) - 720 * 60 * 60)
         AND policy IN ('sb-malware-infections-block')
-ORDER BY subscriber, datetime, policy
+ORDER BY subscriber, hour, policy
 EOT
   , split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
 }
@@ -160,7 +160,7 @@ WHERE parent_policies is NOT null
         AND subscriber IS NOT NULL
         AND hour >= (to_unixtime(now()) - 720 * 60 * 60)
         AND policy IN ('sb-infected-page', 'sb-phishing-page', 'sb-safe-search-youtube', 'sb-safe-search', 'sb-restricted-schedule', 'sb- whitelist')
-ORDER BY subscriber, datetime, policy
+ORDER BY subscriber, hour, policy
 EOT
   , split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
 }

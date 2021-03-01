@@ -37,16 +37,16 @@ resource "aws_athena_named_query" "create_view" {
   workgroup = aws_athena_workgroup.shepherd[count.index].id
   database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
   query     = <<-EOT
-CREATE OR REPLACE VIEW shepherd_all
-AS
-%{for index, db in local.database_names~}
-SELECT * FROM ${db}.${local.table_name}
-%{if index < length(local.database_names) - 1~}
-UNION ALL
-%{endif~}
-%{endfor~}
-GO
-EOT
+      CREATE OR REPLACE VIEW shepherd_all
+      AS
+      %{for index, db in local.database_names~}
+      SELECT * FROM ${db}.${local.table_name}
+      %{if index < length(local.database_names) - 1~}
+      UNION ALL
+      %{endif~}
+      %{endfor~}
+      GO
+  EOT
 }
 
 data "template_file" "create_table" {
@@ -123,68 +123,25 @@ resource "aws_athena_named_query" "num_records" {
   query     = format("select count(*) from \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
 }
 
-# Policy Freqs last 720 hours HHS
-resource "aws_athena_named_query" "hhs-policy-freq-720" {
+# Actionable
+resource "aws_athena_named_query" "actionable" {
   count       = length(var.subscriber_buckets)
-  name        = format("%s-%s-hhs-policy-freq", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
-  description = "Policy Freqs last 720 hours HHS"
+  name        = format("%s-%s-actionable", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Actionable last 720 hours"
   workgroup   = aws_athena_workgroup.shepherd[count.index].id
   database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query       = <<-EOT
-        select policy, count(*) as freq from
-        (select array_join(parent_policies, ' ') AS policy
-        from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
-        where subscriber='sub.hhs.secops'
-        and (((cast(to_unixtime(now()) as integer) / 3600) * 3600) - hour) <= 60*60*720
-        and parent_policies is not null
-        )
-
-        where policy in ('sb-malware-infections-block', 'sb-infected-page', 'sb-phishing-page', 'sb-safe-search', 'sb-safe-search-youtube', 'sb-restricted-schedule', 'sb-whitelist')
-        group by policy
-        order by freq desc;
-    EOT
-}
-
-# HHS actionable last 720 hours
-resource "aws_athena_named_query" "hhs-actionable-720" {
-  count       = length(var.subscriber_buckets)
-  name        = format("%s-%s-hhs-actionable", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
-  description = "Actionable HHS last 720 hours"
-  workgroup   = aws_athena_workgroup.shepherd[count.index].id
-  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query       = <<-EOT
-  select client_address, policy, datetime from
-  (SELECT
-  client_address, from_unixtime("start_time"*0.000001)  as datetime, policy
-  from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
-  CROSS JOIN UNNEST(parent_policies) AS t (policy)
-  where subscriber='sub.hhs.secops'
-  and parent_policies is not null
-  and (((cast(to_unixtime(now()) as integer) / 3600) * 3600) - hour) <= 60*60*720
-  )
-  where policy = 'sb-malware-infections-block'
-  order by datetime, policy
-    EOT
-}
-
-# HHS interesting last 720 hours
-resource "aws_athena_named_query" "hhs-interesting-720" {
-  count       = length(var.subscriber_buckets)
-  name        = format("%s-%s-hhs-interesting", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
-  description = "Actionable HHS last 720 hours"
-  workgroup   = aws_athena_workgroup.shepherd[count.index].id
-  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query       = <<-EOT
-  select client_address, policy, datetime from
-  (SELECT
-  client_address, from_unixtime("start_time"*0.000001)  as datetime, policy
-  from shepherd_global_database_sub_hhs_secops_f23sihm4.dns_data
-  CROSS JOIN UNNEST(parent_policies) AS t (policy)
-  where subscriber='sub.hhs.secops'
-  and parent_policies is not null
-  and (((cast(to_unixtime(now()) as integer) / 3600) * 3600) - hour) <= 60*60*720
-  )
-  where policy in ('sb-infected-page', 'sb-phishing-page', 'sb-safe-search', 'sb-safe-search-youtube', 'sb-restricted-schedule', 'sb-whitelist')
-  order by datetime, policy
-    EOT
+  query = format(
+    <<-EOT
+            "SELECT client_address, subscriber, policy, datetime FROM
+                (client_address, subscriber, policy, from_unixtime("start_time"*0.000001) AS datetime,
+                FROM \"%s\".\"%s\"
+                CROSS JOIN UNNEST(parent_policies) AS t (policy)
+                WHERE subscriber IS NOT NULL
+                AND parent_policies IS NOT NULL
+                AND (((cast(to_unixtime(now()) AS integer) / 3600) * 3600) - hour) <= 60*60*720
+                )
+            WHERE policy = 'sb-malware-infections-block'
+            ORDER BY subscriber, datetime, policy"
+            EOT
+  , split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
 }

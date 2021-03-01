@@ -42,9 +42,6 @@ resource "aws_glue_job" "create_csv" {
     "--enable-continuous-cloudwatch-log" = true
     "--enable-continuous-log-filter"     = true
 
-    // Metrics
-    "--enable-metrics" = ""
-
     /*
     /* Script Inputs below Here
      */

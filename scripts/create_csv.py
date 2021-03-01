@@ -400,6 +400,13 @@ def get_args():
 
     # Optional parameters require slightly more effort.
     raw_params = sys.argv[PARAM_START_INDEX:]
+
+    if len(raw_params) % 2 != 0:
+        print(raw_params)
+        raise Exception(
+            "Parameters are misconfigured. Ensure every key has a value with length greater than 0."
+        )
+
     param_pairs = dict(
         [raw_params[index : index + 2] for index in range(0, len(raw_params), 2)]
     )

@@ -1,15 +1,14 @@
 #! /usr/bin/env python3
 
 """
-Glue Spark job to create a timeframe-bounded CSV of policy triggers from an Athena table.
-
-Each row identifies a single (epoch, policy, IP, DNS requested hostname) tuple.
-If a single request triggered multiple parent policies, then multiple rows will appended to the CSV
+Glue Spark job to create a timeframe-bounded CSV of policy or parent policy triggers from an Athena table.
+Each row identifies a single (epoch, policy/parent policy, IP, DNS requested hostname) tuple.
+If a single request triggered multiple policies or parent policies, then multiple rows will appended to the CSV
 (i.e., if a single request from IP 10.2.3.4 at 1612304100 for the domain malware.bad
-    triggers the pair of parent policies sb-phishing-page-1 and sb-infected-page-1, then
+    triggers the pair of parent policies sb-phishing-page and sb-infected-page, then
     two rows would be created:
-        1612304100000000,2021-02-02,20:15,subscriber,sb-phishing-page-1,10.2.3.4,malware.bad
-        1612304100000000,2021-02-02,20:15,subscriber,sb-infected-page-1,10.2.3.4,malware.bad
+        1612304100000000,2021-02-02,20:15,subscriber,sb-phishing-page,10.2.3.4,malware.bad
+        1612304100000000,2021-02-02,20:15,subscriber,sb-infected-page,10.2.3.4,malware.bad
 
 Output fields:
     epoch_microsec,date_utc,time_utc,policy,client_ip,dns_question
@@ -38,8 +37,11 @@ Optional params:
                           Setting to any value == True; not setting at all == False
     --parentPolicies    | Policies to target for feed. Should be a delimiter-joined string
                           such as a CSV string.
-                          Default when not set: sb-phishing-page-2,sb-infected-page-2
-    --delimiter         | Delimiter used to separate --policies parameter.
+                          Cannot be set if --policies is also set.
+    --policies          | Policies (non-parent) to target for feed. Should be a delimiter-joined
+                          string such as a CSV string.
+                          Cannot be set if --parentPolicies is also set.
+    --delimiter         | Delimiter used to separate --policies/--parentPolicies parameter.
                           Default when not set: ,
     --outputDir         | S3 directory path (not including bucket name) where CSV results should be written.
                           Default when not set: PolicyTriggerCSV-<current_epoch>-<random_string>
@@ -50,6 +52,8 @@ Optional params:
 Will fail if:
  * athenaDatabase.athenaTable does not exist or cannot be accessed,
  * outputBucket does not exist or cannot be accessed,
+ * BOTH policies and parentPolicies were set,
+ * NEITHER policies not parentPolicies was set,
  * BOTH dayRange and maxHoursAgo were set,
  * NEITHER dayRange nor maxHoursAgo was set, or
  * a job parameter is improperly formatted.
@@ -90,6 +94,7 @@ OPTIONAL_PARAMS = [
     "dayRange",
     "maxHoursAgo",
     "fullDays",
+    "policies",
     "parentPolicies",
     "delimiter",
     "outputDir",
@@ -121,7 +126,6 @@ B = {
 B = SimpleNamespace(**B)
 
 DEFAULTS = {
-    "parentPolicies": "sb-phishing-page-2,sb-infected-page-2",
     "delimiter": ",",
     "outputDir": "PolicyTriggerCSV-%s-%s"
     % (START_TIME, "".join([choice(ascii_lowercase + digits) for ch in range(8)])),
@@ -229,6 +233,12 @@ def get_args():
     elif not args.get("maxHoursAgo") and not args.get("dayRange"):
         raise ValidationException("Either --maxHoursAgo or --dayRange must be set.")
 
+    # Validate exactly one of policies and parentPolicies is set.
+    if args.get("policies") and args.get("parentPolicies"):
+        raise ValidationException("--policies and --parentPolicies cannot both be set.")
+    elif not args.get("policies") and not args.get("parentPolicies"):
+        raise ValidationException("Either --policies or --parentPolicies must be set.")
+
     # Validate maxHoursAgo param (if present).
     if args.get("maxHoursAgo") is not None:
         try:
@@ -323,10 +333,12 @@ def main(args):
         )
         query += "(hour >= %s and hour < %s)" % (min_epoch, max_epoch)
 
-    # Get targeted parentPolicies.
+    # Get targeted policies or parentPolicies.
     # Should be passed to SparkSQL as quoted strings
-    parentPolicies = ", ".join(
-        ["'%s'" % (pol) for pol in args.parentPolicies.split(args.delimiter) if pol]
+    pol_type = "parent_policies" if args.parentPolicies else "policies"
+    pol_str = args.parentPolicies if args.parentPolicies else args.policies
+    pol_arr = ", ".join(
+        ["'%s'" % (pol) for pol in pol_str.split(args.delimiter) if pol]
     )
 
     sc = SparkContext()
@@ -349,7 +361,7 @@ def main(args):
 
     df = (
         raw_data.toDF()
-        .filter("parent_policies is not NULL")
+        .filter("%s is not NULL" % (pol_type))
         .select(
             "start_time",
             from_unixtime(col("start_time") / 1000000, "yyyy-MM-dd").alias("datestamp"),
@@ -357,9 +369,9 @@ def main(args):
             "subscriber",
             "client_address",
             "dns_question_name",
-            explode("parent_policies").alias("policy"),
+            explode(pol_type).alias("policy"),
         )
-        .filter("policy in (%s)" % (parentPolicies))
+        .filter("policy in (%s)" % (pol_arr))
         .orderBy("start_time")
         .coalesce(1)
     )

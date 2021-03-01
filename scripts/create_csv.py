@@ -283,7 +283,9 @@ def execute_query(query, query_output_loc, args):
     run_me = athena_client.start_query_execution(
         QueryString=query,
         WorkGroup=args.workgroup,
-        ResultConfiguration={B.OUTPUT: query_output_loc},
+        ResultConfiguration={
+            B.OUTPUT: query_output_loc
+        },  # Workgroup will override this setting
     )
 
     if args.verbose:
@@ -473,7 +475,8 @@ def main(args):
         print()
 
     uniq = hash_key(args.salt, args.ordinal, args.subscriber, args.receiver)
-    s3_loc = "s3://%s" % (os.path.join(args.outputBucket, args.outputDir, uniq))
+    uniq_dir = os.path.join(args.outputDir, uniq)
+    s3_loc = "s3://%s" % (os.path.join(args.outputBucket, uniq_dir))
 
     # Get table fields from `describe` DDL query.
     field_query_res = execute_query(
@@ -579,7 +582,30 @@ def main(args):
 
         if args.verbose:
             print(
-                "Renamed file to s3://%s" % (os.path.join(args.outputBucket, new_key))
+                "Renamed file from s3://%s to s3://%s"
+                % (
+                    os.path.join(bucket, old_key),
+                    os.path.join(bucket, new_key),
+                )
+            )
+
+        new_key = os.path.join(uniq_dir, args.outputFilename)
+        copy_resp = s3_resource.Object(args.outputBucket, new_key).copy_from(
+            CopySource=os.path.join(bucket, old_key)
+        )
+
+        if not copy_resp.get(B.RESP_META, {}).get(B.HTTP_STATUS, None) == 200:
+            raise Exception(
+                "Received non-200 response on copy attempt: %s" % (copy_resp)
+            )
+
+        if args.verbose:
+            print(
+                "Renamed file from s3://%s to s3://%s"
+                % (
+                    os.path.join(bucket, old_key),
+                    os.path.join(args.outputBucket, new_key),
+                )
             )
 
         # Delete original copy of file (if requested).

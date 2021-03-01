@@ -6,7 +6,9 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-SALT=$(chamber read shepherd-global salt -q)
+if [ -z "${SALT}" ]; then
+  SALT=$(chamber read shepherd-global salt -q)
+fi
 
 "${DIR}"/create_csv.py \
     --region="us-gov-west-1" \

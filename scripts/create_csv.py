@@ -30,6 +30,9 @@ Required params:
     --ordinal           | An ordinal related to the subscriber
     --subscriber        | The name of the subscriber
     --receiver          | The email address of the receiver
+    --workgroup         | Name of Athena Workgroup against which queries should be run. The selected workgroup
+                          should support requester-payer settings.
+                          Default: primary
     One (but not both) of --dayRange or --maxHoursAgo is required.
     One (but not both) of --parentPolicies or --policies is required.
 Optional params:
@@ -66,14 +69,11 @@ Optional params:
                              and the original copy of saved.
     --timeout_sec       | Number of seconds after which Athena query attempt should timeout and fail.
                           Default: 1800 (30 minutes)
-    --workgroup         | Name of Athena Workgroup against which queries should be run. The selected workgroup
-                          should support requester-payer settings.
-                          Default: primary
     --verbose           | Prints more verbose output to Glue logs.
 Will fail if:
  * athenaDatabase.athenaTable does not exist or cannot be accessed,
  * outputBucket does not exist or cannot be accessed,
- * workgroup is invalid or improperly permissioned,
+ * workgroup is invalid or has improper permissions,
  * timeout_sec is 0 or less,
  * BOTH policies and parentPolicies were set,
  * NEITHER policies not parentPolicies was set,
@@ -105,6 +105,7 @@ REQUIRED_PARAMS = [
     "ordinal",
     "subscriber",
     "receiver",
+    "workgroup",
 ]
 OPTIONAL_PARAMS = [
     "dayRange",
@@ -117,7 +118,6 @@ OPTIONAL_PARAMS = [
     "verbose",
     "outputFilename",
     "timeout_sec",
-    "workgroup",
     "deleteMetadataFile",
     "deleteOrigOnRename",
 ]
@@ -344,13 +344,15 @@ def get_args():
     args = getResolvedOptions(sys.argv, REQUIRED_PARAMS)
 
     # Optional parameters require slightly more effort.
-    raw_params = sys.argv[PARAM_START_INDEX:]
-    param_pairs = dict(
-        [raw_params[index : index + 2] for index in range(0, len(raw_params), 2)]
-    )
+    param_pairs = {}
+    for p in sys.argv[PARAM_START_INDEX:]:
+        key, value = p.split("=", 1)
+        param_pairs[key.strip("-")] = value
 
     for opt in OPTIONAL_PARAMS:
-        args[opt] = param_pairs.get("--%s" % (opt), DEFAULTS.get(opt, None))
+        default = DEFAULTS.get(opt, None)
+        if default is not None:
+            args[opt] = param_pairs.get(opt, default)
 
     # Validate exactly one of maxHoursAgo and dayRange is set.
     if args.get("maxHoursAgo") and args.get("dayRange"):

@@ -17,10 +17,10 @@ resource "aws_glue_job" "create_csv" {
   description = format("The %s %s job to create the CSV from shepherd data for %s", var.project, var.environment, var.csv_jobs[count.index]["Name"])
   role_arn    = aws_iam_role.glue_role.arn
 
-  glue_version = "2.0"
+  glue_version = "1.0"
 
   command {
-    name            = "glueetl"
+    name            = "pythonshell"
     python_version  = "3"
     script_location = format("s3://%s/%s", module.glue_tmp_bucket.id, aws_s3_bucket_object.create_csv.key)
   }
@@ -54,14 +54,16 @@ resource "aws_glue_job" "create_csv" {
     "--maxHoursAgo" = var.csv_jobs[count.index]["HoursAgo"]
     "--fullDays"    = "true"
     // Results
-    "--outputBucket"   = aws_s3_bucket.csv_results.id
-    "--outputDir"      = "csv"
-    "--outputFilename" = var.csv_jobs[count.index]["OutputFilename"]
-    "--salt"           = data.aws_ssm_parameter.salt.value
-    "--ordinal"        = var.csv_jobs[count.index]["Ordinal"]
-    "--subscriber"     = var.csv_jobs[count.index]["Subscriber"]
-    "--receiver"       = var.csv_jobs[count.index]["Receiver"]
-    "--verbose"        = "true"
+    "--outputBucket"       = aws_s3_bucket.csv_results.id
+    "--outputDir"          = "csv"
+    "--outputFilename"     = var.csv_jobs[count.index]["OutputFilename"]
+    "--salt"               = data.aws_ssm_parameter.salt.value
+    "--ordinal"            = var.csv_jobs[count.index]["Ordinal"]
+    "--subscriber"         = var.csv_jobs[count.index]["Subscriber"]
+    "--receiver"           = var.csv_jobs[count.index]["Receiver"]
+    "--verbose"            = "true"
+    "--deleteMetadataFile" = "true"
+    "--workgroup"          = aws_athena_workgroup.shepherd[count.index]
   }
 
   execution_property {
@@ -70,9 +72,8 @@ resource "aws_glue_job" "create_csv" {
 
   security_configuration = aws_glue_security_configuration.event_data.id
 
-  number_of_workers = 10 // Using too many workers can cause write issues with AWS S3
-  timeout           = 20 // minutes
-  worker_type       = "G.1X"
+  timeout      = 20     // minutes
+  max_capacity = 0.0625 // Update to 1.0 if needed, but most of the work happens in Athena, not Glue.
 
   tags = local.project_tags
 }

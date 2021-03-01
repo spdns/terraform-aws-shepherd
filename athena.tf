@@ -37,16 +37,16 @@ resource "aws_athena_named_query" "create_view" {
   workgroup = aws_athena_workgroup.shepherd[count.index].id
   database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
   query     = <<-EOT
-      CREATE OR REPLACE VIEW shepherd_all
-      AS
-      %{for index, db in local.database_names~}
-      SELECT * FROM ${db}.${local.table_name}
-      %{if index < length(local.database_names) - 1~}
-      UNION ALL
-      %{endif~}
-      %{endfor~}
-      GO
-  EOT
+CREATE OR REPLACE VIEW shepherd_all
+AS
+%{for index, db in local.database_names~}
+SELECT * FROM ${db}.${local.table_name}
+%{if index < length(local.database_names) - 1~}
+UNION ALL
+%{endif~}
+%{endfor~}
+GO
+EOT
 }
 
 data "template_file" "create_table" {
@@ -132,16 +132,16 @@ resource "aws_athena_named_query" "actionable" {
   database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
   query = format(
     <<-EOT
-            "SELECT client_address, subscriber, policy, datetime FROM
-                (client_address, subscriber, policy, from_unixtime("start_time"*0.000001) AS datetime,
-                FROM \"%s\".\"%s\"
-                CROSS JOIN UNNEST(parent_policies) AS t (policy)
-                WHERE subscriber IS NOT NULL
-                AND parent_policies IS NOT NULL
-                AND (((cast(to_unixtime(now()) AS integer) / 3600) * 3600) - hour) <= 60*60*720
-                )
-            WHERE policy = 'sb-malware-infections-block'
-            ORDER BY subscriber, datetime, policy"
-            EOT
+"SELECT client_address, subscriber, policy, datetime FROM
+(client_address, subscriber, policy, from_unixtime("start_time"*0.000001) AS datetime,
+FROM \"%s\".\"%s\"
+CROSS JOIN UNNEST(parent_policies) AS t (policy)
+WHERE subscriber IS NOT NULL
+AND parent_policies IS NOT NULL
+AND (((cast(to_unixtime(now()) AS integer) / 3600) * 3600) - hour) <= 60*60*720
+)
+WHERE policy = 'sb-malware-infections-block'
+ORDER BY subscriber, datetime, policy"
+EOT
   , split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
 }

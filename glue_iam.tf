@@ -8,6 +8,19 @@ data "aws_iam_policy_document" "glue_assume_role_policy_document" {
     }
     effect = "Allow"
   }
+
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "AWS"
+      identifiers = [data.aws_caller_identity.current.account_id]
+    }
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
 }
 
 resource "aws_iam_role" "glue_role" {

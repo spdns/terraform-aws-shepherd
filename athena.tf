@@ -132,16 +132,35 @@ resource "aws_athena_named_query" "actionable" {
   database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
   query = format(
     <<-EOT
-"SELECT client_address, subscriber, policy, datetime FROM
-(client_address, subscriber, policy, from_unixtime("start_time"*0.000001) AS datetime,
-FROM \"%s\".\"%s\"
-CROSS JOIN UNNEST(parent_policies) AS t (policy)
-WHERE subscriber IS NOT NULL
-AND parent_policies IS NOT NULL
-AND (((cast(to_unixtime(now()) AS integer) / 3600) * 3600) - hour) <= 60*60*720
-)
-WHERE policy = 'sb-malware-infections-block'
-ORDER BY subscriber, datetime, policy"
+SELECT *
+FROM "%s"."%s"
+CROSS JOIN unnest(parent_policies) AS t (policy)
+WHERE parent_policies is NOT null
+        AND subscriber IS NOT NULL
+        AND hour >= (to_unixtime(now()) - 720 * 60 * 60)
+        AND policy IN ('sb-malware-infections-block')
+ORDER BY subscriber, datetime, policy
+EOT
+  , split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
+}
+
+# Interesting
+resource "aws_athena_named_query" "interesting" {
+  count       = length(var.subscriber_buckets)
+  name        = format("%s-%s-interesting", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Interesting last 720 hours"
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query = format(
+    <<-EOT
+SELECT *
+FROM "%s"."%s"
+CROSS JOIN unnest(parent_policies) AS t (policy)
+WHERE parent_policies is NOT null
+        AND subscriber IS NOT NULL
+        AND hour >= (to_unixtime(now()) - 720 * 60 * 60)
+        AND policy IN ('sb-infected-page', 'sb-phishing-page', 'sb-safe-search-youtube', 'sb-safe-search', 'sb-restricted-schedule', 'sb- whitelist')
+ORDER BY subscriber, datetime, policy
 EOT
   , split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
 }

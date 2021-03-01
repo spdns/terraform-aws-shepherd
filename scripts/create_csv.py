@@ -507,28 +507,24 @@ def main(args):
         print()
 
     # Verify source DB and table exist
-    if not validate_db(args.athenaDatabase, args.region):
-        sys.exit(1)
-    elif args.verbose:
+    if validate_db(args.athenaDatabase, args.region) and args.verbose:
         print("Validated source database %s exists." % (args.athenaDatabase))
         print()
 
-    if not validate_table(args.athenaDatabase, args.athenaTable, args.region):
-        sys.exit(1)
-    elif args.verbose:
+    if (
+        validate_table(args.athenaDatabase, args.athenaTable, args.region)
+        and args.verbose
+    ):
         print("Validated source table %s exists." % (args.athenaTable))
         print()
 
-    if not validate_workgroup(args.workgroup, args.region):
-        sys.exit(1)
-    elif args.verbose:
+    # Verify workgroup exists and is accessible
+    if validate_workgroup(args.workgroup, args.region) and args.verbose:
         print("Validated workgroup %s exists." % (args.workgroup))
         print()
 
     # Verify output bucket exists and is accessible.
-    if not validate_bucket(args.outputBucket, args.region):
-        sys.exit(1)
-    elif args.verbose:
+    if validate_bucket(args.outputBucket, args.region) and args.verbose:
         print("Verified bucket s3://%s exists and is accessible." % (args.outputBucket))
         print()
 

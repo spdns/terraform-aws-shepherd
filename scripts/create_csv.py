@@ -9,8 +9,10 @@ If a single request triggered multiple policies or parent policies, then multipl
     two rows would be created:
         1612304100000000,2021-02-02,20:15,subscriber,sb-phishing-page,10.2.3.4,malware.bad
         1612304100000000,2021-02-02,20:15,subscriber,sb-infected-page,10.2.3.4,malware.bad
+
 Output fields:
     epoch_microsec,date_utc,time_utc,policy,client_ip,dns_question
+
 Required params:
     --region            | AWS region where Athena table or view resides. Should be us-gov-west-1
     --athenaDatabase    | Athena database containing table or view from which to read
@@ -21,6 +23,7 @@ Required params:
     --subscriber        | The name of the subscriber
     --receiver          | The email address of the receiver
     One (but not both) of --dayRange or --maxHoursAgo is also required.
+
 Optional params:
     --dayRange          | Static range of days from which data should be read. Should be
                           formatted as YYYYMMDD-YYYYMMDD (e.g., 20201230-20210119).
@@ -45,6 +48,7 @@ Optional params:
     --outputFilename    | When set, rename output file to given string.
                           Directory location will be preserved.
     --verbose           | Prints more verbose output to Glue logs
+
 Will fail if:
  * athenaDatabase.athenaTable does not exist or cannot be accessed,
  * outputBucket does not exist or cannot be accessed,

@@ -272,6 +272,10 @@ def delete_s3_obj(full_path):
 
 
 def execute_query(query, query_output_loc, args):
+
+    if args.verbose:
+        print("Running query: %s" % (query))
+
     start_time = int(time())
     athena_client = boto3.client("athena", region_name=args.region)
     result = {}
@@ -282,6 +286,8 @@ def execute_query(query, query_output_loc, args):
         ResultConfiguration={B.OUTPUT: query_output_loc},
     )
 
+    if args.verbose:
+        print("Query is QUEUED")
     while (
         athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])[B.QE][
             B.STATUS
@@ -295,6 +301,8 @@ def execute_query(query, query_output_loc, args):
                 % (args.timeout_sec)
             )
 
+    if args.verbose:
+        print("Query is RUNNING")
     while (
         athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])[B.QE][
             B.STATUS
@@ -314,6 +322,8 @@ def execute_query(query, query_output_loc, args):
         ][B.STATE]
         == B.SUCCEEDED
     ):
+        if args.verbose:
+            print("Query is FAILED")
         result = athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])[
             B.QE
         ][B.STATUS].get(B.SCR, "UnknownQueryFailure")
@@ -321,6 +331,8 @@ def execute_query(query, query_output_loc, args):
 
     # Query succeeded
     else:
+        if args.verbose:
+            print("Query is SUCCEEDED")
         return athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])
 
 
@@ -520,8 +532,6 @@ def main(args):
     )
     query += " where %s is not null and %s)a" % (args.policy_type, pushdown)
     query += " where a.policy in (%s)" % (pol_arr)
-    if args.verbose:
-        print("Running query: %s" % (query))
 
     # Execute CSV-generating query.
     csv_query_res = execute_query(query, s3_loc, args)

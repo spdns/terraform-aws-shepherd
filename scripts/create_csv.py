@@ -275,6 +275,7 @@ def execute_query(query, query_output_loc, args):
 
     if args.verbose:
         print("Running query: %s" % (query))
+        print()
 
     start_time = int(time())
     athena_client = boto3.client("athena", region_name=args.region)
@@ -325,7 +326,8 @@ def execute_query(query, query_output_loc, args):
         == B.SUCCEEDED
     ):
         if args.verbose:
-            print("Query is FAILED")
+            print("Query has FAILED")
+            print()
         result = athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])[
             B.QE
         ][B.STATUS].get(B.SCR, "UnknownQueryFailure")
@@ -334,7 +336,8 @@ def execute_query(query, query_output_loc, args):
     # Query succeeded
     else:
         if args.verbose:
-            print("Query is SUCCEEDED")
+            print("Query has SUCCEEDED")
+            print()
         return athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])
 
 

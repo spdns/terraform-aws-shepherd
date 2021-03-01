@@ -68,7 +68,7 @@ resource "aws_glue_job" "create_csv" {
     "--verbose"            = "true"
     "--timeout_sec"        = local.timeout_minutes * 60
     "--deleteMetadataFile" = "true"
-    "--workgroup"          = aws_athena_workgroup.shepherd[count.index]
+    "--workgroup"          = format("%s-%s-workgroup-%s", var.project, var.environment, var.csv_jobs[count.index]["Bucket"])
   }
 
   execution_property {

@@ -5,6 +5,10 @@ executors:
     working_directory: ~/project/terraform-aws-shepherd
     docker:
       - image: cimg/base:2020.01
+  python:
+    working_directory: ~/project/terraform-aws-shepherd
+    docker:
+      - image: cimg/python:3.9
 
 jobs:
   test:
@@ -41,9 +45,17 @@ jobs:
       - run: scripts/update-docs
       - run: scripts/format-files
       - run: git diff --exit-code
+  test_python:
+    executor: python
+    steps:
+      - checkout
+      - run: pip install black==20.8b1 flake8==3.8.4
+      - run: black scripts/*.py
+      - run: flake8 scripts/*.py
 
 workflows:
   version: 2
   main:
     jobs:
       - test
+      - test_python

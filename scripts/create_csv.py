@@ -350,9 +350,7 @@ def get_args():
         param_pairs[key.strip("-")] = value
 
     for opt in OPTIONAL_PARAMS:
-        default = DEFAULTS.get(opt, None)
-        if default is not None:
-            args[opt] = param_pairs.get(opt, default)
+        args[opt] = param_pairs.get(opt, DEFAULTS.get(opt, None))
 
     # Validate exactly one of maxHoursAgo and dayRange is set.
     if args.get("maxHoursAgo") and args.get("dayRange"):

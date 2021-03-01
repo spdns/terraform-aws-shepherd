@@ -399,13 +399,13 @@ def get_args():
     args = getResolvedOptions(sys.argv, REQUIRED_PARAMS)
 
     # Optional parameters require slightly more effort.
-    param_pairs = {}
-    for p in sys.argv[PARAM_START_INDEX:]:
-        key, value = p.split("=", 1)
-        param_pairs[key.strip("-")] = value
+    raw_params = sys.argv[PARAM_START_INDEX:]
+    param_pairs = dict(
+        [raw_params[index : index + 2] for index in range(0, len(raw_params), 2)]
+    )
 
     for opt in OPTIONAL_PARAMS:
-        args[opt] = param_pairs.get(opt, DEFAULTS.get(opt, None))
+        args[opt] = param_pairs.get("--%s" % (opt), DEFAULTS.get(opt, None))
 
     # Validate exactly one of maxHoursAgo and dayRange is set.
     if args.get("maxHoursAgo") and args.get("dayRange"):

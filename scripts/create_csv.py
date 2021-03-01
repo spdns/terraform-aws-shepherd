@@ -1,17 +1,25 @@
 #! /usr/bin/env python3
 
 """
-Glue Spark job to create a timeframe-bounded CSV of policy or parent policy triggers from an Athena table.
-Each row identifies a single (epoch, policy/parent policy, IP, DNS requested hostname) tuple.
+Recommended Glue environment:
+    Type: Python shell
+    Python version: Python 3 (Glue Version 1.0)
+
+Glue Python job to create a timeframe-bounded CSV of policy or parent policy triggers from an Athena table.
+Each row identifies a single policy hit captured by Shepherd DNS.
 If a single request triggered multiple policies or parent policies, then multiple rows will appended to the CSV
 (i.e., if a single request from IP 10.2.3.4 at 1612304100 for the domain malware.bad
     triggers the pair of parent policies sb-phishing-page and sb-infected-page, then
     two rows would be created:
-        1612304100000000,2021-02-02,20:15,subscriber,sb-phishing-page,10.2.3.4,malware.bad
-        1612304100000000,2021-02-02,20:15,subscriber,sb-infected-page,10.2.3.4,malware.bad
+        1612304100000000,pm-resolver,10.2.3.4, ... malware.bad, ... sb-phishing-page, ...
+        1612304100000000,pm-resolver,10.2.3.4, ... malware.bad, ... sb-infected-page, ...
 
 Output fields:
-    epoch_microsec,date_utc,time_utc,policy,client_ip,dns_question
+    Output fields will correspond to all available columns in the current version of the Shepherd data
+    dictionary (including partition columns) with the exception of the policies / parent_policies column
+    (depending on use of the --policies or --parentPolicies param, respectively). The targeted
+    [parent_]policies column will instead be expanded to produce one string field per array element
+    as discussed in the section above.
 
 Required params:
     --region            | AWS region where Athena table or view resides. Should be us-gov-west-1
@@ -22,8 +30,8 @@ Required params:
     --ordinal           | An ordinal related to the subscriber
     --subscriber        | The name of the subscriber
     --receiver          | The email address of the receiver
-    One (but not both) of --dayRange or --maxHoursAgo is also required.
-
+    One (but not both) of --dayRange or --maxHoursAgo is required.
+    One (but not both) of --parentPolicies or --policies is required.
 Optional params:
     --dayRange          | Static range of days from which data should be read. Should be
                           formatted as YYYYMMDD-YYYYMMDD (e.g., 20201230-20210119).
@@ -47,11 +55,26 @@ Optional params:
                           Default when not set: PolicyTriggerCSV-<current_epoch>-<random_string>
     --outputFilename    | When set, rename output file to given string.
                           Directory location will be preserved.
-    --verbose           | Prints more verbose output to Glue logs
-
+    --deleteMetadataFile | When set, the .csv.metadata file produced alongside the .csv query output
+                           will be automatically deleted. Deleting this file does not affect the expected
+                           .csv output file, nor does it affect the underlying Shepherd data in S3.
+                           When not set, the .csv.metadata file will remain in the S3 location specified
+                           by the --outputBucket and --outputDir params.
+    --deleteOrigOnRename   | When set to any value in conjunction with --outputFilename, creates a renamed COPY
+                             of output file and DELETES original. if --outputFilename is set and
+                             --deleteOrigOnRename is not, then BOTH the renamed version of the file
+                             and the original copy of saved.
+    --timeout_sec       | Number of seconds after which Athena query attempt should timeout and fail.
+                          Default: 1800 (30 minutes)
+    --workgroup         | Name of Athena Workgroup against which queries should be run. The selected workgroup
+                          should support requester-payer settings.
+                          Default: primary
+    --verbose           | Prints more verbose output to Glue logs.
 Will fail if:
  * athenaDatabase.athenaTable does not exist or cannot be accessed,
  * outputBucket does not exist or cannot be accessed,
+ * workgroup is invalid or improperly permissioned,
+ * timeout_sec is 0 or less,
  * BOTH policies and parentPolicies were set,
  * NEITHER policies not parentPolicies was set,
  * BOTH dayRange and maxHoursAgo were set,
@@ -65,26 +88,19 @@ import sys
 from datetime import datetime, timedelta
 from random import choice
 from string import ascii_lowercase, digits
-from time import time
+from time import time, sleep
 from types import SimpleNamespace
 
 import boto3
 from botocore.exceptions import ClientError
-
-# from awsglue.transforms import *
-from awsglue.context import GlueContext
-from awsglue.dynamicframe import DynamicFrame
-from awsglue.job import Job
 from awsglue.utils import getResolvedOptions
-from pyspark.context import SparkContext
-from pyspark.sql.functions import explode, col, from_unixtime
+
 
 REQUIRED_PARAMS = [
     "region",
     "athenaDatabase",
     "athenaTable",
     "outputBucket",
-    "JOB_NAME",
     "salt",
     "ordinal",
     "subscriber",
@@ -100,6 +116,10 @@ OPTIONAL_PARAMS = [
     "outputDir",
     "verbose",
     "outputFilename",
+    "timeout_sec",
+    "workgroup",
+    "deleteMetadataFile",
+    "deleteOrigOnRename",
 ]
 PARAM_START_INDEX = 1
 START_TIME = int(time())
@@ -113,6 +133,7 @@ B = {
     "QE": "QueryExecution",
     "STATUS": "Status",
     "STATE": "State",
+    "STATS": "Statistics",
     "QUEUED": "QUEUED",
     "RUNNING": "RUNNING",
     "SUCCEEDED": "SUCCEEDED",
@@ -122,11 +143,15 @@ B = {
     "ERROR": "Error",
     "CODE": "Code",
     "OUTPUT": "OutputLocation",
+    "RC": "ResultConfiguration",
+    "TIME_IN_MS": "EngineExecutionTimeInMillis",
 }
 B = SimpleNamespace(**B)
 
 DEFAULTS = {
     "delimiter": ",",
+    "timeout_sec": 1800,
+    "workgroup": "primary",
     "outputDir": "PolicyTriggerCSV-%s-%s"
     % (START_TIME, "".join([choice(ascii_lowercase + digits) for ch in range(8)])),
 }
@@ -134,6 +159,23 @@ DEFAULTS = {
 
 class ValidationException(Exception):
     pass
+
+
+class TimeoutException(Exception):
+    pass
+
+
+class OutputException(Exception):
+    pass
+
+
+class QueryException(Exception):
+    def __init__(self, message, reason="UnknownReason"):
+        self.message = message
+        self.reason = reason
+
+    def __str__(self):
+        return str(self.message)
 
 
 def validate_db(database, region, create_db=False):
@@ -214,6 +256,89 @@ def validate_bucket(bucket, region):
     return True
 
 
+def delete_s3_obj(full_path):
+    if full_path.startswith("s3://"):
+        full_path = full_path[len("s3://") :]
+    bucket, key = full_path.split(os.path.sep, 1)
+
+    s3_client = boto3.resource("s3")
+    delete_resp = s3_client.Object(bucket, key).delete()
+    if not delete_resp.get(B.RESP_META, {}).get(B.HTTP_STATUS, None) == 204:
+        raise Exception(
+            "Received non-204 response on delete attempt: %s" % (delete_resp)
+        )
+
+    return True
+
+
+def execute_query(query, query_output_loc, args):
+    start_time = int(time())
+    athena_client = boto3.client("athena", region_name=args.region)
+    result = {}
+
+    run_me = athena_client.start_query_execution(
+        QueryString=query,
+        WorkGroup=args.workgroup,
+        ResultConfiguration={B.OUTPUT: query_output_loc},
+    )
+
+    while (
+        athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])[B.QE][
+            B.STATUS
+        ][B.STATE]
+        == B.QUEUED
+    ):
+        sleep(1)
+        if (int(time()) - start_time) >= args.timeout_sec:
+            raise TimeoutException(
+                "Query timed out during queue stage after %s seconds."
+                % (args.timeout_sec)
+            )
+
+    while (
+        athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])[B.QE][
+            B.STATUS
+        ][B.STATE]
+        == B.RUNNING
+    ):
+        sleep(1)
+        if (int(time()) - start_time) >= args.timeout_sec:
+            raise TimeoutException(
+                "Query timed out during execution stage after %s seconds."
+                % (args.timeout_sec)
+            )
+
+    if (
+        not athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])[B.QE][
+            B.STATUS
+        ][B.STATE]
+        == B.SUCCEEDED
+    ):
+        result = athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])[
+            B.QE
+        ][B.STATUS].get(B.SCR, "UnknownQueryFailure")
+        raise QueryException("Query %s failed: %s" % (query, result), reason=result)
+
+    # Query succeeded
+    else:
+        return athena_client.get_query_execution(QueryExecutionId=run_me[B.QEID])
+
+
+def get_file_contents(s3_path, region):
+    s3_client = boto3.client("s3", region_name=region)
+    if s3_path.startswith("s3://"):
+        s3_path = s3_path[len("s3://") :]
+    bucket, key = s3_path.split(os.path.sep, 1)
+
+    info = s3_client.get_object(Bucket=bucket, Key=key)
+    if not info.get("Body", None):
+        raise OutputException(
+            "S3 location %s does not exist or contains no content." % (s3_path)
+        )
+
+    return info.get("Body").read().decode("utf-8")
+
+
 def get_args():
     # Required parameters can be easily retrieved.
     args = getResolvedOptions(sys.argv, REQUIRED_PARAMS)
@@ -223,7 +348,7 @@ def get_args():
     param_pairs = dict(
         [raw_params[index : index + 2] for index in range(0, len(raw_params), 2)]
     )
-    print("Input Params: %s" % param_pairs)
+
     for opt in OPTIONAL_PARAMS:
         args[opt] = param_pairs.get("--%s" % (opt), DEFAULTS.get(opt, None))
 
@@ -238,6 +363,10 @@ def get_args():
         raise ValidationException("--policies and --parentPolicies cannot both be set.")
     elif not args.get("policies") and not args.get("parentPolicies"):
         raise ValidationException("Either --policies or --parentPolicies must be set.")
+    args["policy_type"] = "policies" if args.get("policies") else "parent_policies"
+    args["policy_strings"] = (
+        args.get("policies") if args.get("policies") else args.get("parentPolicies")
+    )
 
     # Validate maxHoursAgo param (if present).
     if args.get("maxHoursAgo") is not None:
@@ -271,6 +400,18 @@ def get_args():
             raise ValidationException(
                 "Invalid --dayRange received: start date cannot be later than end date."
             )
+
+    # Validate timeout_sec is an integer greater than 0
+    try:
+        args["timeout_sec"] = int(args["timeout_sec"])
+    except Exception:
+        raise ValidationException(
+            "Invalid --timeout_sec received: value must be an integer."
+        )
+    if not args["timeout_sec"] > 0:
+        raise ValidationException(
+            "Invalid --timeout_sec received: value must be greater than 0."
+        )
 
     args = SimpleNamespace(**args)
 
@@ -315,13 +456,40 @@ def main(args):
     if validate_bucket(args.outputBucket, args.region) and args.verbose:
         print("Verified bucket s3://%s exists and is accessible." % (args.outputBucket))
 
-    # Get timeframe for pushdown predicate
+    uniq = hash_key(args.salt, args.ordinal, args.subscriber, args.receiver)
+    s3_loc = "s3://%s" % (os.path.join(args.outputBucket, args.outputDir, uniq))
+
+    # Get table fields from `describe` DDL query.
+    field_query_res = execute_query(
+        "describe %s.%s" % (args.athenaDatabase, args.athenaTable), s3_loc, args
+    )
+    field_query_loc = field_query_res.get(B.QE, {}).get(B.RC, {}).get(B.OUTPUT, None)
+    if not field_query_loc:
+        raise QueryException(
+            "Unable to retrieve fields for table %s.%s."
+            % (args.athenaDatabase, args.athenaTable)
+        )
+
+    # Retrieve results of DDL query.
+    spec = get_file_contents(field_query_loc, args.region)
+    fields = []
+    for elem in spec.split("\n"):
+        field = elem.strip()
+        if not field:
+            break
+        fields.append(field.split().pop(0))
+    # Delete outputs of DDL query.
+    # delete_txt
+    delete_s3_obj(field_query_loc)
+    # delete_metadata
+    delete_s3_obj("%s.metadata" % (field_query_loc))
+
+    # Get timeframe
     pushdown = ""
-    query = ""
     if args.maxHoursAgo:
         aligner = DAILY_ALIGNER if args.fullDays else HOURLY_ALIGNER
         min_hour = ((START_TIME - (3600 * args.maxHoursAgo)) // aligner) * aligner
-        pushdown = "(hour >= %s)" % (min_hour)
+        pushdown = "hour >= %s" % (min_hour)
 
     elif args.dayRange:
         min_epoch = int((args.startDt - datetime.utcfromtimestamp(0)).total_seconds())
@@ -331,101 +499,64 @@ def main(args):
                 (args.endDt + timedelta(days=1)) - datetime.utcfromtimestamp(0)
             ).total_seconds()
         )
-        query += "(hour >= %s and hour < %s)" % (min_epoch, max_epoch)
+        pushdown = "hour >= %s and hour < %s" % (min_epoch, max_epoch)
 
     # Get targeted policies or parentPolicies.
-    # Should be passed to SparkSQL as quoted strings
-    pol_type = "parent_policies" if args.parentPolicies else "policies"
-    pol_str = args.parentPolicies if args.parentPolicies else args.policies
+    # Should be passed to Athena as quoted strings.
     pol_arr = ", ".join(
-        ["'%s'" % (pol) for pol in pol_str.split(args.delimiter) if pol]
+        ["'%s'" % (pol) for pol in args.policy_strings.split(args.delimiter) if pol]
     )
 
-    sc = SparkContext()
-    gc = GlueContext(sc)
-    sparkSession = gc.spark_session
-    job = Job(gc)
-    job.init(args.JOB_NAME, vars(args))
-
-    # Requestor pays
-    # https://aws.amazon.com/premiumsupport/knowledge-center/requester-pays-buckets-glue-emr-athena/
-    sparkSession._jsc.hadoopConfiguration().set("fs.s3.useRequesterPaysHeader", "true")
-    gc._jsc.hadoopConfiguration().set("fs.s3.useRequesterPaysHeader", "true")
-
-    raw_data = gc.create_dynamic_frame.from_catalog(
-        database=args.athenaDatabase,
-        table_name=args.athenaTable,
-        transformation_ctx="raw_data",
-        push_down_predicate=pushdown,
+    # Construct query. policies / parent_policies column will be exploded and aliased as "policy",
+    # while all other fields will be preserved.
+    fields = [f if f != args.policy_type else "policy" for f in fields]
+    query = (
+        "select * from (select %s from default.sub_global_test cross join unnest(%s) as t (policy)"
+        % (", ".join(fields), args.policy_type)
     )
-
-    df = (
-        raw_data.toDF()
-        .filter("%s is not NULL" % (pol_type))
-        .select(
-            "start_time",
-            from_unixtime(col("start_time") / 1000000, "yyyy-MM-dd").alias("datestamp"),
-            from_unixtime(col("start_time") / 1000000, "HH:mm:ss").alias("timestamp"),
-            "subscriber",
-            "client_address",
-            "dns_question_name",
-            explode(pol_type).alias("policy"),
-        )
-        .filter("policy in (%s)" % (pol_arr))
-        .orderBy("start_time")
-        .coalesce(1)
-    )
-
-    write_frame = DynamicFrame.fromDF(df, gc, "transformed_frame")
-
-    uniq = hash_key(args.salt, args.ordinal, args.subscriber, args.receiver)
-    s3_loc = "s3://%s" % (os.path.join(args.outputBucket, args.outputDir, uniq))
+    query += " where %s is not null and %s)a" % (args.policy_type, pushdown)
+    query += " where a.policy in (%s)" % (pol_arr)
     if args.verbose:
-        print("S3 Results Location: %s" % s3_loc)
-    gc.write_dynamic_frame.from_options(
-        frame=write_frame,
-        connection_type="s3",
-        connection_options={"path": s3_loc},
-        format="csv",
-        transformation_ctx="data_sink",
-    )
+        print("Running query: %s" % (query))
+
+    # Execute CSV-generating query.
+    csv_query_res = execute_query(query, s3_loc, args)
+    csv_query_loc = csv_query_res.get(B.QE, {}).get(B.RC, {}).get(B.OUTPUT, None)
+    if not csv_query_loc:
+        raise QueryException(
+            "Unable to retrieve results for CSV generating query against %s.%s."
+            % (args.athenaDatabase, args.athenaTable)
+        )
+    if args.verbose:
+        print(
+            "Wrote CSV query results to %s. Query completed in %s seconds."
+            % (
+                csv_query_loc,
+                csv_query_res.get(B.QE, {})
+                .get(B.STATS, {})
+                .get(B.TIME_IN_MS, "unknown"),
+            )
+        )
 
     # Rename output file, if requested.
     if args.outputFilename:
 
-        # This is the final object that will get renamed
-        output_obj = None
-
-        # It's possible that the job eventually creates a lot of objects.
-        # Get the most recent object from the prefix and rename it
-        s3_client = boto3.client("s3", region_name=args.region)
-        paginator = s3_client.get_paginator("list_objects_v2")
-        prefix = os.path.join(args.outputDir, uniq)
-        pages = paginator.paginate(Bucket=args.outputBucket, Prefix=prefix)
-        for page in pages:
-            for obj in page["Contents"]:
-                # Always get the last object created
-                if output_obj is None:
-                    output_obj = obj
-                elif obj["LastModified"] > output_obj["LastModified"]:
-                    output_obj = obj
-
-        if output_obj is None:
-            raise Exception(
-                "Unable to find output file in s3://%s"
-                % (os.path.join(args.outputBucket, prefix))
-            )
-        elif args.verbose:
-            print(
-                "Renaming file s3://%s"
-                % (os.path.join(args.outputBucket, output_obj["Key"]))
-            )
+        # This is the final object that will get renamed.
+        # Athena appears to only produce a single output CSV irrespective of size,
+        # so checking for multiple objects is unnecessary.
+        # output_obj = None
 
         # Copy the object, which retains the original
+        obj_info = csv_query_loc
+        if obj_info.startswith("s3://"):
+            obj_info = obj_info[len("s3://") :]
+        bucket, old_key = obj_info.split(os.path.sep, 1)
+        bucket_dir = os.path.dirname(old_key)
+        new_key = os.path.join(bucket_dir, args.outputFilename)
         s3_resource = boto3.resource("s3", region_name=args.region)
-        copy_resp = s3_resource.Object(
-            args.outputBucket, os.path.join(prefix, args.outputFilename)
-        ).copy_from(CopySource=os.path.join(args.outputBucket, output_obj["Key"]))
+        copy_resp = s3_resource.Object(bucket, new_key).copy_from(
+            CopySource=os.path.join(bucket, old_key)
+        )
 
         if not copy_resp.get(B.RESP_META, {}).get(B.HTTP_STATUS, None) == 200:
             raise Exception(
@@ -434,15 +565,20 @@ def main(args):
 
         if args.verbose:
             print(
-                "Renamed file to s3://%s"
-                % (
-                    os.path.join(
-                        args.outputBucket, args.outputDir, uniq, args.outputFilename
-                    )
-                )
+                "Renamed file to s3://%s" % (os.path.join(args.outputBucket, new_key))
             )
 
-    job.commit()
+        # Delete original copy of file (if requested).
+        if args.deleteOrigOnRename:
+            # delete_orig
+            delete_s3_obj(csv_query_loc)
+            if args.verbose:
+                print("Deleted original copy of CSV at %s." % (csv_query_loc))
+
+    # Delete metadata file (if requested).
+    if args.deleteMetadataFile:
+        # delete_metadata
+        delete_s3_obj("%s.metadata" % (csv_query_loc))
 
 
 if __name__ == "__main__":

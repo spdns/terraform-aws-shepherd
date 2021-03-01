@@ -442,19 +442,23 @@ def hash_key(salt, ordinal, subscriber, receiver):
 def main(args):
     if args.verbose:
         print("Got arguments: %s" % (args))
+        print()
 
     # Verify source DB and table exist
     if validate_db(args.athenaDatabase, args.region) and args.verbose:
         print("Validated source database %s exists." % (args.athenaDatabase))
+        print()
     if (
         validate_table(args.athenaDatabase, args.athenaTable, args.region)
         and args.verbose
     ):
         print("Validated source table %s exists." % (args.athenaTable))
+        print()
 
     # Verify output bucket exists and is accessible.
     if validate_bucket(args.outputBucket, args.region) and args.verbose:
         print("Verified bucket s3://%s exists and is accessible." % (args.outputBucket))
+        print()
 
     uniq = hash_key(args.salt, args.ordinal, args.subscriber, args.receiver)
     s3_loc = "s3://%s" % (os.path.join(args.outputBucket, args.outputDir, uniq))
@@ -511,8 +515,8 @@ def main(args):
     # while all other fields will be preserved.
     fields = [f if f != args.policy_type else "policy" for f in fields]
     query = (
-        "select * from (select %s from default.sub_global_test cross join unnest(%s) as t (policy)"
-        % (", ".join(fields), args.policy_type)
+        'select * from (select %s from "%s"."%s" cross join unnest(%s) as t (policy)'
+        % (", ".join(fields), args.athenaDatabase, args.athenaTable, args.policy_type)
     )
     query += " where %s is not null and %s)a" % (args.policy_type, pushdown)
     query += " where a.policy in (%s)" % (pol_arr)

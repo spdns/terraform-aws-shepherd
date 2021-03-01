@@ -88,6 +88,7 @@ import sys
 from datetime import datetime, timedelta
 from random import choice
 from string import ascii_lowercase, digits
+import textwrap
 from time import time, sleep
 from types import SimpleNamespace
 
@@ -306,7 +307,12 @@ def delete_s3_obj(full_path):
 def execute_query(query, query_output_loc, args):
 
     if args.verbose:
-        print("Running query: %s" % (query))
+        print("Running query:")
+        print()
+        wrapper = textwrap.TextWrapper(
+            initial_indent="\t", width=80, subsequent_indent="\t"
+        )
+        print(wrapper.fill(query))
         print()
 
     start_time = int(time())
@@ -494,23 +500,28 @@ def main(args):
         print()
 
     # Verify source DB and table exist
-    if validate_db(args.athenaDatabase, args.region) and args.verbose:
+    if not validate_db(args.athenaDatabase, args.region):
+        sys.exit(1)
+    elif args.verbose:
         print("Validated source database %s exists." % (args.athenaDatabase))
         print()
 
-    if (
-        validate_table(args.athenaDatabase, args.athenaTable, args.region)
-        and args.verbose
-    ):
+    if not validate_table(args.athenaDatabase, args.athenaTable, args.region):
+        sys.exit(1)
+    elif args.verbose:
         print("Validated source table %s exists." % (args.athenaTable))
         print()
 
-    if validate_workgroup(args.workgroup, args.region) and args.verbose:
+    if not validate_workgroup(args.workgroup, args.region):
+        sys.exit(1)
+    elif args.verbose:
         print("Validated workgroup %s exists." % (args.workgroup))
         print()
 
     # Verify output bucket exists and is accessible.
-    if validate_bucket(args.outputBucket, args.region) and args.verbose:
+    if not validate_bucket(args.outputBucket, args.region):
+        sys.exit(1)
+    elif args.verbose:
         print("Verified bucket s3://%s exists and is accessible." % (args.outputBucket))
         print()
 

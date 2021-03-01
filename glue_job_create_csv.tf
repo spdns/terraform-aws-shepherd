@@ -10,6 +10,10 @@ resource "aws_s3_bucket_object" "create_csv" {
   etag   = filemd5("${path.module}/${local.script_create_csv}")
 }
 
+locals {
+  timeout_minutes = 30
+}
+
 resource "aws_glue_job" "create_csv" {
   count = length(var.csv_jobs)
 
@@ -62,6 +66,7 @@ resource "aws_glue_job" "create_csv" {
     "--subscriber"         = var.csv_jobs[count.index]["Subscriber"]
     "--receiver"           = var.csv_jobs[count.index]["Receiver"]
     "--verbose"            = "true"
+    "--timeout_sec"        = local.timeout_minutes * 60
     "--deleteMetadataFile" = "true"
     "--workgroup"          = aws_athena_workgroup.shepherd[count.index]
   }
@@ -72,8 +77,8 @@ resource "aws_glue_job" "create_csv" {
 
   security_configuration = aws_glue_security_configuration.event_data.id
 
-  timeout      = 20     // minutes
-  max_capacity = 0.0625 // Update to 1.0 if needed, but most of the work happens in Athena, not Glue.
+  timeout      = local.timeout_minutes // minutes
+  max_capacity = 0.0625                // Update to 1.0 if needed, but most of the work happens in Athena, not Glue.
 
   tags = local.project_tags
 }

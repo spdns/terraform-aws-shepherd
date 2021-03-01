@@ -231,6 +231,38 @@ def validate_table(database, table, region):
     return True
 
 
+def validate_workgroup(workgroup, region):
+    athena_client = boto3.client("athena", region_name=region)
+
+    # Check to see if the Athena workgroup exists.
+    workgroup_resp = 0
+    try:
+        workgroup_resp = athena_client.get_work_group(WorkGroup=workgroup)[B.RESP_META][
+            B.HTTP_STATUS
+        ]
+    except ClientError as ce:
+        workgroup_resp = ce.response[B.RESP_META][B.HTTP_STATUS]
+
+    # Only acceptable outcome: 200 (workgroup exists and we can access it)
+    if not workgroup_resp == 200:
+        # Try to be helpful on the error type if we can.
+        if workgroup_resp == 400:
+            raise ValidationException(
+                "Workgroup %s could not be found: %s" % (workgroup, workgroup_resp)
+            )
+        elif workgroup_resp == 403:
+            raise ValidationException(
+                "Workgroup %s is not authorized: %s" % (workgroup, workgroup_resp)
+            )
+        else:
+            raise ValidationException(
+                "Received unacceptable HTTP response code for workgroup "
+                "%s: %s. Desired response: 200" % (workgroup, workgroup_resp)
+            )
+
+    return True
+
+
 def validate_bucket(bucket, region):
     s3_client = boto3.client("s3", region_name=region)
 
@@ -465,11 +497,16 @@ def main(args):
     if validate_db(args.athenaDatabase, args.region) and args.verbose:
         print("Validated source database %s exists." % (args.athenaDatabase))
         print()
+
     if (
         validate_table(args.athenaDatabase, args.athenaTable, args.region)
         and args.verbose
     ):
         print("Validated source table %s exists." % (args.athenaTable))
+        print()
+
+    if validate_workgroup(args.workgroup, args.region) and args.verbose:
+        print("Validated workgroup %s exists." % (args.workgroup))
         print()
 
     # Verify output bucket exists and is accessible.

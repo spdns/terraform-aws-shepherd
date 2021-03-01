@@ -524,7 +524,6 @@ def main(args):
     elif args.verbose:
         print("Verified bucket s3://%s exists and is accessible." % (args.outputBucket))
         print()
-    print("validation")
 
     uniq = hash_key(args.salt, args.ordinal, args.subscriber, args.receiver)
     uniq_dir = os.path.join(args.outputDir, uniq)

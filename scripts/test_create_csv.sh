@@ -25,7 +25,7 @@ fi
     "--ordinal" "0" \
     "--subscriber" "sub.dod.dds" \
     "--receiver" "eli@dds.mil,chris.gilmer@dds.mil" \
-    "--verbose=" "true" \
+    "--verbose" "true" \
     "--timeout_sec" "1800" \
     "--deleteMetadataFile" "true" \
     "--workgroup" "shepherd-global-workgroup-sub.dod.dds-r8cf2j5q"

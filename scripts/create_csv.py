@@ -357,7 +357,7 @@ def main(args):
 
     df = (
         raw_data.toDF()
-        .filter("%s is not NULL" %(pol_type))
+        .filter("%s is not NULL" % (pol_type))
         .select(
             "start_time",
             from_unixtime(col("start_time") / 1000000, "yyyy-MM-dd").alias("datestamp"),

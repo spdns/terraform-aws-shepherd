@@ -1,2 +1,4 @@
 .venv/
 job_test.sh
+
+.envrc.local

@@ -33,10 +33,11 @@ locals {
 resource "aws_athena_named_query" "create_view" {
   count = length(var.subscriber_buckets)
 
-  name      = format("%s-%s-create-view", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
-  workgroup = aws_athena_workgroup.shepherd[count.index].id
-  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query     = <<-EOT
+  name        = format("%s-%s-create-view", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Create view via Union"
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = <<-EOT
 CREATE OR REPLACE VIEW shepherd_all
 AS
 %{for index, db in local.database_names~}
@@ -63,10 +64,11 @@ data "template_file" "create_table" {
 resource "aws_athena_named_query" "create_table" {
   count = length(var.subscriber_buckets)
 
-  name      = format("%s-%s-create-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
-  workgroup = aws_athena_workgroup.shepherd[count.index].id
-  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query     = data.template_file.create_table[count.index].rendered
+  name        = format("%s-%s-create-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Create table"
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = data.template_file.create_table[count.index].rendered
 }
 
 data "template_file" "alter_table" {
@@ -89,18 +91,20 @@ data "template_file" "alter_table" {
 resource "aws_athena_named_query" "alter_table" {
   count = length(var.subscriber_buckets)
 
-  name      = format("%s-%s-alter-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
-  workgroup = aws_athena_workgroup.shepherd[count.index].id
-  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query     = data.template_file.alter_table[count.index].rendered
+  name        = format("%s-%s-alter-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Load partition"
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = data.template_file.alter_table[count.index].rendered
 }
 
 resource "aws_athena_named_query" "repair_table" {
   count = length(var.subscriber_buckets)
 
-  name      = format("%s-%s-repair-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
-  workgroup = aws_athena_workgroup.shepherd[count.index].id
-  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  name        = format("%s-%s-repair-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Repair table"
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
   // Query cannot take a database name
   query = format("MSCK REPAIR TABLE %s", local.table_name)
 }
@@ -108,19 +112,21 @@ resource "aws_athena_named_query" "repair_table" {
 resource "aws_athena_named_query" "date_range" {
   count = length(var.subscriber_buckets)
 
-  name      = format("%s-%s-date-range", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
-  workgroup = aws_athena_workgroup.shepherd[count.index].id
-  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query     = format("select from_unixtime(min(hour)) as min_hour, from_unixtime(max(hour)) as max_hour from \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
+  name        = format("%s-%s-date-range", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Retrieve min/max date range for data"
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = format("select from_unixtime(min(hour)) as min_hour, from_unixtime(max(hour)) as max_hour from \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
 }
 
 resource "aws_athena_named_query" "num_records" {
   count = length(var.subscriber_buckets)
 
-  name      = format("%s-%s-num-records", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
-  workgroup = aws_athena_workgroup.shepherd[count.index].id
-  database  = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
-  query     = format("select count(*) from \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
+  name        = format("%s-%s-num-records", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Return number of records"
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = format("select count(*) from \"%s\".\"%s\"", split(":", aws_glue_catalog_database.shepherd[count.index].id)[1], local.table_name)
 }
 
 # Actionable

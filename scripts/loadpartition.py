@@ -131,7 +131,9 @@ def s3ListRootObject(s3):
     result = s3.list_objects_v2(
         Bucket=params["s3Bucket"], Delimiter="/", RequestPayer="requester"
     )
-    resultList.extend(result.get("CommonPrefixes"))
+    commonPrefixes = result.get("CommonPrefixes")
+    if commonPrefixes is not None:
+        resultList.extend(commonPrefixes)
     while result["IsTruncated"]:
         result = s3.list_objects_v2(
             Bucket=params["s3Bucket"],
@@ -139,7 +141,9 @@ def s3ListRootObject(s3):
             Delimiter="/",
             ContinuationToken=result["NextContinuationToken"],
         )
-        resultList.extend(result.get("CommonPrefixes"))
+        commonPrefixes = result.get("CommonPrefixes")
+        if commonPrefixes is not None:
+            resultList.extend(commonPrefixes)
     return resultList
 
 

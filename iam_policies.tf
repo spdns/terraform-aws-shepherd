@@ -19,7 +19,8 @@ data "aws_iam_policy_document" "assume_role_policy" {
 #
 # Shepherd Users
 #
-data "aws_iam_policy_document" "shepherd_users" {
+
+data "aws_iam_policy_document" "shepherd_users_s3" {
   // Allow all actions against athena results bucket
   statement {
     effect = "Allow"
@@ -60,6 +61,9 @@ data "aws_iam_policy_document" "shepherd_users" {
       values   = ["true"]
     }
   }
+}
+
+data "aws_iam_policy_document" "shepherd_users_athena" {
 
   statement {
     actions = [
@@ -129,21 +133,9 @@ data "aws_iam_policy_document" "shepherd_users" {
       values   = [var.project]
     }
   }
+}
 
-  // Allow decrypt of all AWS resources using AWS managed KMS keys
-  statement {
-    effect = "Allow"
-    actions = [
-      "kms:ListAliases",
-      "kms:Decrypt",
-    ]
-    resources = ["*"] // This should apply only to AWS KMS keys where the principal can be `*`.
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
+data "aws_iam_policy_document" "shepherd_users_glue" {
 
   statement {
     effect = "Allow"
@@ -172,6 +164,24 @@ data "aws_iam_policy_document" "shepherd_users" {
         )
       ]],
     ])
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "shepherd_users_other" {
+
+  // Allow decrypt of all AWS resources using AWS managed KMS keys
+  statement {
+    effect = "Allow"
+    actions = [
+      "kms:ListAliases",
+      "kms:Decrypt",
+    ]
+    resources = ["*"] // This should apply only to AWS KMS keys where the principal can be `*`.
     condition {
       test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"
@@ -235,15 +245,48 @@ data "aws_iam_policy_document" "shepherd_users" {
   }
 }
 
-resource "aws_iam_policy" "shepherd_users" {
-  name        = "app-${var.project}-${var.environment}"
-  description = "Policy for 'shepherd_users'"
-  policy      = data.aws_iam_policy_document.shepherd_users.json
+resource "aws_iam_policy" "shepherd_users_s3" {
+  name        = "app-${var.project}-${var.environment}-s3"
+  description = "Policy for 'shepherd_users' s3 access"
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_users_s3.json))
 }
 
-resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment" {
+resource "aws_iam_policy" "shepherd_users_athena" {
+  name        = "app-${var.project}-${var.environment}-athena"
+  description = "Policy for 'shepherd_users' athena access"
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_users_athena.json))
+}
+
+resource "aws_iam_policy" "shepherd_users_glue" {
+  name        = "app-${var.project}-${var.environment}-glue"
+  description = "Policy for 'shepherd_users' glue access"
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_users_glue.json))
+}
+
+resource "aws_iam_policy" "shepherd_users_other" {
+  name        = "app-${var.project}-${var.environment}-other"
+  description = "Policy for 'shepherd_users' other access"
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_users_other.json))
+}
+
+resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_s3" {
   role       = aws_iam_role.shepherd_users.name
-  policy_arn = aws_iam_policy.shepherd_users.arn
+  policy_arn = aws_iam_policy.shepherd_users_s3.arn
+}
+
+resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_athena" {
+  role       = aws_iam_role.shepherd_users.name
+  policy_arn = aws_iam_policy.shepherd_users_athena.arn
+}
+
+resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_glue" {
+  role       = aws_iam_role.shepherd_users.name
+  policy_arn = aws_iam_policy.shepherd_users_glue.arn
+}
+
+resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_other" {
+  role       = aws_iam_role.shepherd_users.name
+  policy_arn = aws_iam_policy.shepherd_users_other.arn
 }
 
 #

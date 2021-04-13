@@ -143,13 +143,21 @@ data "aws_iam_policy_document" "shepherd_users_glue" {
     effect = "Allow"
     actions = [
       "glue:BatchCreatePartition",
+      "glue:BatchDeletePartition",
+      "glue:BatchDeleteTable",
+      "glue:BatchDeleteTableVersion",
       "glue:CreateTable",
+      "glue:DeleteTable",
+      "glue:DeleteTableVersion",
       "glue:GetDatabase",
       "glue:GetDatabases",
       "glue:GetPartition",
       "glue:GetPartitions",
       "glue:GetTable",
       "glue:GetTables",
+      "glue:GetTableVersion",
+      "glue:UpdatePartition",
+      "glue:UpdateTable",
     ]
     resources = flatten([
       [format("arn:%s:glue:%s:%s:catalog",

@@ -30,6 +30,12 @@ variable "shepherd_users" {
   description = "The set of IAM user names to add to the 'shepherd_users' group"
 }
 
+variable "shepherd_engineers" {
+  type        = list(string)
+  default     = []
+  description = "The set of IAM user names to add to the 'shepherd_engineers' group"
+}
+
 variable "subscriber_buckets" {
   type        = list(string)
   default     = []

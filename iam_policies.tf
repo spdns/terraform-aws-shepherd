@@ -212,6 +212,11 @@ data "aws_iam_policy_document" "shepherd_users_other" {
       "ssm:DescribeParameters",
     ]
     resources = ["*"]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
   }
 
   statement {
@@ -229,6 +234,11 @@ data "aws_iam_policy_document" "shepherd_users_other" {
         var.environment,
       ),
     ]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
   }
 
   statement {
@@ -292,11 +302,125 @@ resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_othe
 }
 
 #
+# Shepherd Engineers
+#
+
+data "aws_iam_policy_document" "shepherd_engineers" {
+  // Allow all actions against athena results bucket
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "athena:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "glue:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
+
+  // Allow decrypt of all AWS resources using AWS managed KMS keys
+  statement {
+    effect = "Allow"
+    actions = [
+      "kms:ListAliases",
+      "kms:Decrypt",
+    ]
+    resources = ["*"] // This should apply only to AWS KMS keys where the principal can be `*`.
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "quicksight:*",
+    ]
+    resources = [
+      "*",
+    ]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "ssm:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "tag:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "shepherd_engineers" {
+  name        = "app-${var.project}-${var.environment}-engineers"
+  description = "Policy for 'shepherd_engineers' access"
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_engineers.json))
+}
+
+resource "aws_iam_role_policy_attachment" "shepherd_engineers_policy_attachment" {
+  role       = aws_iam_role.shepherd_engineers.name
+  policy_arn = aws_iam_policy.shepherd_engineers.arn
+}
+
+
+#
 # Allow group to assume role
 #
 
 # Allow assuming the "shepherd_users" role
-data "aws_iam_policy_document" "assume_role_shepherd_policy_doc" {
+data "aws_iam_policy_document" "assume_role_shepherd_users_policy_doc" {
   statement {
     effect    = "Allow"
     actions   = ["sts:AssumeRole"]
@@ -305,13 +429,34 @@ data "aws_iam_policy_document" "assume_role_shepherd_policy_doc" {
 }
 
 resource "aws_iam_policy" "assume_role_shepherd_users_policy" {
-  name        = "app-${var.project}-${var.environment}-assume-role"
+  name        = "app-${var.project}-${var.environment}-users-assume-role"
   path        = "/"
   description = "Allows the 'shepherd_users' role to be assumed."
-  policy      = data.aws_iam_policy_document.assume_role_shepherd_policy_doc.json
+  policy      = data.aws_iam_policy_document.assume_role_shepherd_users_policy_doc.json
 }
 
 resource "aws_iam_group_policy_attachment" "shepherd_users_assume_role_policy_attachment" {
   group      = aws_iam_group.shepherd_users.name
   policy_arn = aws_iam_policy.assume_role_shepherd_users_policy.arn
+}
+
+# Allow assuming the "shepherd_engineers" role
+data "aws_iam_policy_document" "assume_role_shepherd_engineers_policy_doc" {
+  statement {
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [aws_iam_role.shepherd_engineers.arn]
+  }
+}
+
+resource "aws_iam_policy" "assume_role_shepherd_engineers_policy" {
+  name        = "app-${var.project}-${var.environment}-engineers-assume-role"
+  path        = "/"
+  description = "Allows the 'shepherd_engineers' role to be assumed."
+  policy      = data.aws_iam_policy_document.assume_role_shepherd_engineers_policy_doc.json
+}
+
+resource "aws_iam_group_policy_attachment" "shepherd_engineers_assume_role_policy_attachment" {
+  group      = aws_iam_group.shepherd_engineers.name
+  policy_arn = aws_iam_policy.assume_role_shepherd_engineers_policy.arn
 }

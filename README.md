@@ -133,6 +133,7 @@ No requirements.
 | environment | n/a | `string` | `"global"` | no |
 | project | n/a | `string` | `"shepherd"` | no |
 | region | n/a | `string` | `"us-gov-west-1"` | no |
+| shepherd\_engineers | The set of IAM user names to add to the 'shepherd\_engineers' group | `list(string)` | `[]` | no |
 | shepherd\_users | The set of IAM user names to add to the 'shepherd\_users' group | `list(string)` | `[]` | no |
 | subscriber\_buckets | The set of AWS S3 buckets to subscribe too | `list(string)` | `[]` | no |
 | tags | The tags for the project | `map(string)` | `{}` | no |

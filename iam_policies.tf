@@ -87,6 +87,8 @@ data "aws_iam_policy_document" "shepherd_users_athena" {
       "athena:List*",
       "athena:StartQueryExecution",
       "athena:StopQueryExecution",
+      "athena:TagResource",
+      "athena:UpdateWorkGroup",
     ]
     effect    = "Allow"
     resources = aws_athena_workgroup.shepherd[*].arn

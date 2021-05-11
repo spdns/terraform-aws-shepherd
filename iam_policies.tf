@@ -332,107 +332,20 @@ data "aws_iam_policy_document" "shepherd_engineers" {
     ]
   }
 
-  // Allow all actions against athena results bucket
+  // Consolidated statement of all actions with wildcard resources for Shepherd Engineers. 
   statement {
     effect = "Allow"
     actions = [
       "s3:*",
-    ]
-    resources = ["*"]
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
       "athena:*",
-    ]
-    resources = ["*"]
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
       "glue:*",
-    ]
-    resources = ["*"]
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
-  // Allow iam:Get*, iam:List* and acm:* to faciliate terraform apply.
-  statement {
-    effect = "Allow"
-    actions = [
       "iam:Get*",
       "iam:List*",
-      "acm:*"
-    ]
-    resources = ["*"]
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
-
-  // Allow decrypt of all AWS resources using AWS managed KMS keys
-  statement {
-    effect = "Allow"
-    actions = [
+      "acm:*",
       "kms:ListAliases",
       "kms:Decrypt",
-    ]
-    resources = ["*"] // This should apply only to AWS KMS keys where the principal can be `*`.
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
       "quicksight:*",
-    ]
-    resources = [
-      "*",
-    ]
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
       "ssm:*",
-    ]
-    resources = ["*"]
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
       "tag:*",
     ]
     resources = ["*"]

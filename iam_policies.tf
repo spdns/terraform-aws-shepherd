@@ -314,6 +314,24 @@ resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_othe
 #
 
 data "aws_iam_policy_document" "shepherd_engineers" {
+
+  // Terraform State Lock
+  statement {
+    sid = "TerraformStateLockAccess"
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem",
+    ]
+    effect = "Allow"
+    resources = [
+      format("arn:%s:dynamodb:%s:%s:table/dds-shepherd-govcloud-terraform-state-lock",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+      data.aws_caller_identity.current.account_id),
+    ]
+  }
+
   // Allow all actions against athena results bucket
   statement {
     effect = "Allow"

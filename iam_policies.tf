@@ -371,26 +371,13 @@ data "aws_iam_policy_document" "shepherd_engineers" {
       values   = ["true"]
     }
   }
-  // Allow Get* List* for IAM permissions  
+  // Allow iam:Get*, iam:List* and acm:* to faciliate terraform apply.
   statement {
     effect = "Allow"
     actions = [
       "iam:Get*",
       "iam:List*",
-    ]
-    resources = ["*"]
-    condition {
-      test     = "Bool"
-      variable = "aws:MultiFactorAuthPresent"
-      values   = ["true"]
-    }
-  }
-
-  // Allow acm:* for certificate creation and destruction 
-  statement {
-    effect = "Allow"
-    actions = [
-      "acm:*",
+      "acm:*"
     ]
     resources = ["*"]
     condition {

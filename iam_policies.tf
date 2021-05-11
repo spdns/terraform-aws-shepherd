@@ -372,7 +372,7 @@ data "aws_iam_policy_document" "shepherd_engineers" {
     }
   }
 
-  // Allow access to IAM Get* and List*
+  // Allow access to IAM Get* and List* permissions
   statement {
     effect = "Allow"
     actions = [

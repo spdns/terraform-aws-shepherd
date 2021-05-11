@@ -372,6 +372,21 @@ data "aws_iam_policy_document" "shepherd_engineers" {
     }
   }
 
+  // Allow access to IAM Get* and List*
+  statement {
+    effect = "Allow"
+    actions = [
+      "iam:Get*",
+      "iam:List*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
+
   // Allow decrypt of all AWS resources using AWS managed KMS keys
   statement {
     effect = "Allow"

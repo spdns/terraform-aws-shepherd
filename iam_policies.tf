@@ -331,6 +331,23 @@ data "aws_iam_policy_document" "shepherd_engineers" {
       data.aws_caller_identity.current.account_id),
     ]
   }
+  // Allows shepherd engineers to access CreatePolicyVersion in IAM
+  statement {
+    effect = "Allow"
+    actions = [
+      "iam:CreatePolicyVersion",
+    ]
+    resources = [
+      format("arn:%s:iam:%s:policy/*shepherd-global*",
+        data.aws_partition.current.partition,
+      data.aws_caller_identity.current.account_id),
+    ]
+    condition {
+      test     = "Bool"
+      variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
 
   // Consolidated statement of all actions with wildcard resources for Shepherd Engineers. 
   statement {

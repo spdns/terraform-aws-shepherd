@@ -335,12 +335,12 @@ data "aws_iam_policy_document" "shepherd_engineers" {
   statement {
     effect = "Allow"
     actions = [
-      "iam:CreatePolicyVersion",
+      "iam:*",
     ]
     resources = [
-      format("arn:%s:iam:%s:policy/*shepherd-global*",
-        data.aws_partition.current.partition,
-      data.aws_caller_identity.current.account_id),
+      format("arn:%s:iam::%s:group/*shepherd*", data.aws_partition.current.partition, data.aws_caller_identity.current.account_id),
+      format("arn:%s:iam::%s:role/*shepherd*", data.aws_partition.current.partition, data.aws_caller_identity.current.account_id),
+      format("arn:%s:iam::%s:policy/*shepherd*", data.aws_partition.current.partition, data.aws_caller_identity.current.account_id),
     ]
     condition {
       test     = "Bool"
@@ -349,7 +349,7 @@ data "aws_iam_policy_document" "shepherd_engineers" {
     }
   }
 
-  // Consolidated statement of all actions with wildcard resources for Shepherd Engineers. 
+  // Consolidated statement of all actions with wildcard resources for Shepherd Engineers.
   statement {
     effect = "Allow"
     actions = [

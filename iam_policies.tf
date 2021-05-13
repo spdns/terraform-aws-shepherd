@@ -331,6 +331,7 @@ data "aws_iam_policy_document" "shepherd_engineers" {
       data.aws_caller_identity.current.account_id),
     ]
   }
+  
   // Allows shepherd engineers to access CreatePolicyVersion in IAM
   statement {
     effect = "Allow"

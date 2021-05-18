@@ -50,11 +50,7 @@ data "aws_iam_policy_document" "shepherd_users_s3" {
       "s3:GetObject",
       "s3:ListBucket",
     ]
-    resources = flatten([for bucket in var.subscriber_buckets : [
-      format("arn:%s:s3:::%s", data.aws_partition.current.partition, bucket),
-      format("arn:%s:s3:::%s/*", data.aws_partition.current.partition, bucket),
-      ]
-    ])
+    resources = ["*"]
     condition {
       test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"
@@ -159,21 +155,7 @@ data "aws_iam_policy_document" "shepherd_users_glue" {
       "glue:UpdatePartition",
       "glue:UpdateTable",
     ]
-    resources = flatten([
-      [format("arn:%s:glue:%s:%s:catalog",
-        data.aws_partition.current.partition,
-        data.aws_region.current.name,
-      data.aws_caller_identity.current.account_id)],
-      aws_glue_catalog_database.shepherd[*].arn,
-      [for bucket in var.subscriber_buckets : [
-        format("arn:%s:glue:%s:%s:table/%s/*",
-          data.aws_partition.current.partition,
-          data.aws_region.current.name,
-          data.aws_caller_identity.current.account_id,
-          replace(replace(format("%s-%s", local.glue_database_name_prefix, bucket), "-", "_"), ".", "_"),
-        )
-      ]],
-    ])
+    resources = ["*"]
     condition {
       test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"

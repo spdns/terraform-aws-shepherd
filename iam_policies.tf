@@ -291,6 +291,11 @@ resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_othe
   policy_arn = aws_iam_policy.shepherd_users_other.arn
 }
 
+resource "aws_iam_role_policy_attachment" "shepherd_redshift" {
+  role       = aws_iam_role.shepherd_users.name
+  policy_arn = "arn:aws-us-gov:iam::aws:policy/AmazonRedshiftDataFullAccess"
+}
+
 #
 # Shepherd Engineers
 #
@@ -345,6 +350,7 @@ data "aws_iam_policy_document" "shepherd_engineers" {
       "kms:ListAliases",
       "kms:Decrypt",
       "quicksight:*",
+      "redshift:*",
       "ssm:*",
       "tag:*",
     ]

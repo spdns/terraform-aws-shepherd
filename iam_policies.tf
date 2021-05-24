@@ -292,8 +292,13 @@ resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_othe
 }
 
 resource "aws_iam_role_policy_attachment" "shepherd_redshift" {
+  // https://stackoverflow.com/questions/45486041/how-to-attach-multiple-iam-policies-to-iam-roles-using-terraform
+  for_each = toset([
+    "arn:aws-us-gov:iam::aws:policy/AmazonRedshiftDataFullAccess",
+    "arn:aws-us-gov:iam::aws:policy/AmazonRedshiftReadOnlyAccess"
+  ])
   role       = aws_iam_role.shepherd_users.name
-  policy_arn = "arn:aws-us-gov:iam::aws:policy/AmazonRedshiftDataFullAccess"
+  policy_arn = each.value
 }
 
 #
@@ -353,6 +358,7 @@ data "aws_iam_policy_document" "shepherd_engineers" {
       "redshift:*",
       "ssm:*",
       "tag:*",
+      "vpc:*",
     ]
     resources = ["*"]
     condition {

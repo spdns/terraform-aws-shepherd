@@ -346,20 +346,21 @@ data "aws_iam_policy_document" "shepherd_engineers" {
   statement {
     effect = "Allow"
     actions = [
-      "s3:*",
+      "acm:*",
       "athena:*",
+      "ec2:*",
       "glue:*",
       "iam:Get*",
       "iam:List*",
-      "acm:*",
       "kms:ListAliases",
       "kms:Decrypt",
       "quicksight:*",
+      "rds:*",
       "redshift:*",
       "ssm:*",
+      "s3:*",
       "tag:*",
       "vpc:*",
-      "ec2:*",
     ]
     resources = ["*"]
     condition {

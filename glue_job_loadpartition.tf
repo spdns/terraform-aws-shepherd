@@ -52,6 +52,7 @@ resource "aws_glue_job" "shepherd" {
     // Source Data
     "--s3Bucket" = var.subscriber_buckets[count.index]
     "--s3Folder" = "/"
+    "--dataType" = "dns"
   }
 
   execution_property {

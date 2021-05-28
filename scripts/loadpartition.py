@@ -5,6 +5,8 @@ import botocore
 import sys
 from awsglue.utils import getResolvedOptions
 
+VALID_DATA_TYPES = ["dns", "proxy"]
+PROXY_SUFFIX = ".proxy/"
 
 args = getResolvedOptions(
     sys.argv,
@@ -17,6 +19,7 @@ args = getResolvedOptions(
         "athenaWorkgroup",
         "s3Bucket",
         "s3Folder",
+        "dataType"
     ],
 )
 params = {
@@ -28,10 +31,20 @@ params = {
     "athenaWorkgroup": args["athenaWorkgroup"],
     "s3Bucket": args["s3Bucket"],
     "s3Folder": args["s3Folder"],
+    "dataType": args["dataType"],
     "timeout": int(30),  # in sec
 }
+
+
+class ConfigurationException(Exception):
+    pass
+
+
 print("Parameters : ")
 print(params)
+if not params.get("dataType", "").lower() in VALID_DATA_TYPES:
+    raise ConfigurationException("Invalid dataType param received: %s. Valid params: %s" %(
+        args.get("dataType"), VALID_DATA_TYPES))
 print("----------------------------------")
 print()
 s3Client = boto3.client("s3", region_name=params["region"])
@@ -200,6 +213,16 @@ print()
 # Parse S3 folder structure and create partition list
 prefix = params["s3Folder"]
 subscriberFolders = s3ListRootObject(s3Client)
+
+# Get only subscribers that either
+# 1) Do NOT end in .proxy for  --dataType dns
+# 2) DO end in .proxy for --dataType proxy
+if params.get("dataType", "").lower() == "dns":
+    subscriberFolders = [sub for sub in subscriberFolders if not sub.get("Prefix", "").endswith(PROXY_SUFFIX)]
+elif params.get("dataType", "").lower() == "proxy":
+    subscriberFolders = [sub for sub in subscriberFolders if sub.get("Prefix", "").endswith(PROXY_SUFFIX)]
+print(subscriberFolders)
+
 yearList = []
 monthList = []
 dayList = []

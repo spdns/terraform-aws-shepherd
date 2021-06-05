@@ -134,7 +134,7 @@ resource "aws_glue_job" "shepherd_proxy" {
   security_configuration = aws_glue_security_configuration.event_data.id
 
   timeout      = 10     // minutes
-  max_capacity = 0.0625  // Update to 1.0 if needed.
+  max_capacity = 0.0625 // Update to 1.0 if needed.
 
   tags = local.project_tags
 }

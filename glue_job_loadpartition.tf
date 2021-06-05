@@ -91,7 +91,7 @@ resource "aws_glue_job" "shepherd_proxy" {
 
   glue_version = "2.0"
 
-  command {         
+  command {
     name            = "pythonshell"
     python_version  = "3"
     script_location = format("s3://%s/%s", module.glue_tmp_bucket.id, aws_s3_bucket_object.loadpartition.key)

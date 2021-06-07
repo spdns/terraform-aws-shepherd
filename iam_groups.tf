@@ -35,3 +35,8 @@ resource "aws_iam_group_membership" "shepherd_engineers" {
   group = aws_iam_group.shepherd_engineers.name
   users = data.aws_iam_user.shepherd_engineers[*].user_name
 }
+
+// Adding this for the redshift demo
+resource "aws_iam_group" "shepherd_redshift" {
+  name = "shepherd_redshift"
+}

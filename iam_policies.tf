@@ -16,6 +16,17 @@ data "aws_iam_policy_document" "assume_role_policy" {
   }
 }
 
+// RedShift assume role policy
+data "aws_iam_policy_document" "assume_redshift_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "AWS"
+      identifiers = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
 #
 # Shepherd Users
 #
@@ -382,6 +393,121 @@ resource "aws_iam_role_policy_attachment" "shepherd_engineers_policy_attachment"
   policy_arn = aws_iam_policy.shepherd_engineers.arn
 }
 
+#
+# Shepherd Redshift ***** DEMO USE ONLY *****
+#
+
+data "aws_iam_policy_document" "shepherd_redshift_s3" {
+  // Allow all actions against athena results bucket
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:Get*",
+      "s3:List*",
+      "s3:Put*",
+    ]
+    resources = [
+      module.athena_results.arn,
+      "${module.athena_results.arn}/*",
+    ]
+  }
+
+  // Allow limited actions against akamai buckets
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:GetBucketLocation",
+      "s3:GetBucketRequestPayment",
+      "s3:GetEncryptionConfiguration",
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = ["*"]
+  }
+}
+
+data "aws_iam_policy_document" "shepherd_redshift_athena" {
+
+  statement {
+    actions = [
+      "athena:ListWorkGroups",
+    ]
+    effect    = "Allow"
+    resources = ["*"]
+  }
+
+  // Allow full access to athena against the workgroup
+  statement {
+    actions = [
+      "athena:BatchGet*",
+      "athena:CreateNamedQuery",
+      "athena:Get*",
+      "athena:List*",
+      "athena:StartQueryExecution",
+      "athena:StopQueryExecution",
+      "athena:TagResource",
+      "athena:UpdateWorkGroup",
+    ]
+    effect    = "Allow"
+    resources = aws_athena_workgroup.shepherd[*].arn
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Project"
+      values   = [var.project]
+    }
+  }
+
+  // Allow full access to athena against the datacatalog
+  statement {
+    actions = [
+      "athena:GetDataCatalog",
+      "athena:GetDatabase",
+      "athena:GetTableMetadata",
+      "athena:ListDatabases",
+      "athena:ListDatabases",
+      "athena:ListTableMetadata",
+      "athena:ListTagsForResource",
+    ]
+    effect = "Allow"
+    resources = [
+      format("arn:%s:athena:%s:%s:datacatalog/%s",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+        data.aws_caller_identity.current.account_id,
+        "AwsDataCatalog"
+      ),
+    ]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Project"
+      values   = [var.project]
+    }
+  }
+}
+
+resource "aws_iam_policy" "shepherd_redshift_s3" {
+  name        = "app-${var.project}-${var.environment}-redshift-demo-s3"
+  description = "Policy for 'shepherd_redshift' s3 access"
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_redshift_s3.json))
+}
+
+resource "aws_iam_policy" "shepherd_redshift_athena" {
+  name        = "app-${var.project}-${var.environment}-redshift-demo-athena"
+  description = "Policy for 'shepherd_redshift' athena access"
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_redshift_athena.json))
+}
+
+resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_s3" {
+  role       = aws_iam_role.shepherd_redshift.name
+  policy_arn = aws_iam_policy.shepherd_redshift_s3.arn
+}
+
+resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_athena" {
+  role       = aws_iam_role.shepherd_redshift.name
+  policy_arn = aws_iam_policy.shepherd_redshift_athena.arn
+}
+
 
 #
 # Allow group to assume role
@@ -427,4 +553,25 @@ resource "aws_iam_policy" "assume_role_shepherd_engineers_policy" {
 resource "aws_iam_group_policy_attachment" "shepherd_engineers_assume_role_policy_attachment" {
   group      = aws_iam_group.shepherd_engineers.name
   policy_arn = aws_iam_policy.assume_role_shepherd_engineers_policy.arn
+}
+
+# Allow assuming the "shepherd_redshift" role
+data "aws_iam_policy_document" "assume_role_shepherd_redshift_policy_doc" {
+  statement {
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [aws_iam_role.shepherd_redshift.arn]
+  }
+}
+
+resource "aws_iam_policy" "assume_role_shepherd_redshift_policy" {
+  name        = "app-${var.project}-${var.environment}-redshift-assume-role"
+  path        = "/"
+  description = "Allows the 'shepherd_redshift' role to be assumed."
+  policy      = data.aws_iam_policy_document.assume_role_shepherd_redshift_policy_doc.json
+}
+
+resource "aws_iam_group_policy_attachment" "shepherd_redshift_assume_role_policy_attachment" {
+  group      = aws_iam_group.shepherd_redshift.name
+  policy_arn = aws_iam_policy.assume_role_shepherd_redshift_policy.arn
 }

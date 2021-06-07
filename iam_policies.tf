@@ -21,8 +21,8 @@ data "aws_iam_policy_document" "assume_redshift_role_policy" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
-      type        = "AWS"
-      identifiers = [data.aws_caller_identity.current.account_id]
+      type        = "Service"
+      identifiers = ["redshift.amazonaws.com"]
     }
   }
 }
@@ -394,7 +394,7 @@ resource "aws_iam_role_policy_attachment" "shepherd_engineers_policy_attachment"
 }
 
 #
-# Shepherd Redshift ***** DEMO USE ONLY *****
+# Shepherd Redshift
 #
 
 data "aws_iam_policy_document" "shepherd_redshift_s3" {
@@ -486,16 +486,52 @@ data "aws_iam_policy_document" "shepherd_redshift_athena" {
   }
 }
 
+data "aws_iam_policy_document" "shepherd_redshift_glue" {
+  // Required Actions: https://docs.aws.amazon.com/redshift/latest/dg/c-spectrum-iam-policies.html
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "glue:CreateDatabase",
+      "glue:DeleteDatabase",
+      "glue:GetDatabase",
+      "glue:GetDatabases",
+      "glue:UpdateDatabase",
+      "glue:CreateTable",
+      "glue:DeleteTable",
+      "glue:BatchDeleteTable",
+      "glue:UpdateTable",
+      "glue:GetTable",
+      "glue:GetTables",
+      "glue:BatchCreatePartition",
+      "glue:CreatePartition",
+      "glue:DeletePartition",
+      "glue:BatchDeletePartition",
+      "glue:UpdatePartition",
+      "glue:GetPartition",
+      "glue:GetPartitions",
+      "glue:BatchGetPartition",
+    ]
+    resources = ["*"]
+  }
+}
+
 resource "aws_iam_policy" "shepherd_redshift_s3" {
-  name        = "app-${var.project}-${var.environment}-redshift-demo-s3"
+  name        = "app-${var.project}-${var.environment}-redshift-s3"
   description = "Policy for 'shepherd_redshift' s3 access"
   policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_redshift_s3.json))
 }
 
 resource "aws_iam_policy" "shepherd_redshift_athena" {
-  name        = "app-${var.project}-${var.environment}-redshift-demo-athena"
+  name        = "app-${var.project}-${var.environment}-redshift-athena"
   description = "Policy for 'shepherd_redshift' athena access"
   policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_redshift_athena.json))
+}
+
+resource "aws_iam_policy" "shepherd_redshift_glue" {
+  name        = "app-${var.project}-${var.environment}-redshift-glue"
+  description = "Policy for 'shepherd_redshift' glue access"
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_redshift_glue.json))
 }
 
 resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_s3" {
@@ -508,6 +544,10 @@ resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_a
   policy_arn = aws_iam_policy.shepherd_redshift_athena.arn
 }
 
+resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_glue" {
+  role       = aws_iam_role.shepherd_redshift.name
+  policy_arn = aws_iam_policy.shepherd_redshift_glue.arn
+}
 
 #
 # Allow group to assume role

@@ -26,8 +26,9 @@ resource "aws_athena_workgroup" "shepherd" {
 }
 
 locals {
-  database_names = [for db in aws_glue_catalog_database.shepherd.*.id : split(":", db)[1]]
-  table_name     = "dns_data"
+  database_names   = [for db in aws_glue_catalog_database.shepherd.*.id : split(":", db)[1]]
+  table_name       = "dns_data"
+  proxy_table_name = "proxy_data"
 }
 
 resource "aws_athena_named_query" "create_view" {
@@ -69,6 +70,27 @@ resource "aws_athena_named_query" "create_table" {
   workgroup   = aws_athena_workgroup.shepherd[count.index].id
   database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
   query       = data.template_file.create_table[count.index].rendered
+}
+
+data "template_file" "create_proxy_table" {
+  count = length(var.subscriber_buckets)
+
+  template = file("${path.module}/templates/create_proxy_table_spec.sql.tmpl")
+  vars = {
+    // Query cannot take a database name
+    table_name = local.proxy_table_name
+    s3_bucket  = var.subscriber_buckets[count.index]
+  }
+}
+
+resource "aws_athena_named_query" "create_proxy_table" {
+  count = length(var.subscriber_buckets)
+
+  name        = format("%s-%s-create-proxy-table", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Create proxy table"
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = data.template_file.create_proxy_table[count.index].rendered
 }
 
 data "template_file" "alter_table" {

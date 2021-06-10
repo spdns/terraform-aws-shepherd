@@ -92,7 +92,7 @@ resource "aws_glue_job" "shepherd_proxy" {
   glue_version = "2.0"
 
   command {
-    name            = "pythonshell"
+    name            = "glueetl"
     python_version  = "3"
     script_location = format("s3://%s/%s", module.glue_tmp_bucket.id, aws_s3_bucket_object.loadpartition.key)
   }
@@ -133,8 +133,8 @@ resource "aws_glue_job" "shepherd_proxy" {
 
   security_configuration = aws_glue_security_configuration.event_data.id
 
-  timeout      = 10     // minutes
-  max_capacity = 0.0625 // Update to 1.0 if needed.
+  timeout      = 10  // minutes
+  max_capacity = 1.0 // Update to 1.0 if needed.
 
   tags = local.project_tags
 }

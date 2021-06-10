@@ -365,6 +365,7 @@ data "aws_iam_policy_document" "shepherd_engineers" {
       "iam:List*",
       "kms:ListAliases",
       "kms:Decrypt",
+      "logs:*",
       "quicksight:*",
       "rds:*",
       "redshift:*",

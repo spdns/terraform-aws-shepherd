@@ -19,7 +19,7 @@ args = getResolvedOptions(
         "athenaWorkgroup",
         "s3Bucket",
         "s3Folder",
-        "dataType"
+        "dataType",
     ],
 )
 params = {
@@ -43,8 +43,10 @@ class ConfigurationException(Exception):
 print("Parameters : ")
 print(params)
 if not params.get("dataType", "").lower() in VALID_DATA_TYPES:
-    raise ConfigurationException("Invalid dataType param received: %s. Valid params: %s" %(
-        args.get("dataType"), VALID_DATA_TYPES))
+    raise ConfigurationException(
+        "Invalid dataType param received: %s. Valid params: %s"
+        % (args.get("dataType"), VALID_DATA_TYPES)
+    )
 print("----------------------------------")
 print()
 s3Client = boto3.client("s3", region_name=params["region"])
@@ -218,9 +220,15 @@ subscriberFolders = s3ListRootObject(s3Client)
 # 1) Do NOT end in .proxy for  --dataType dns
 # 2) DO end in .proxy for --dataType proxy
 if params.get("dataType", "").lower() == "dns":
-    subscriberFolders = [sub for sub in subscriberFolders if not sub.get("Prefix", "").endswith(PROXY_SUFFIX)]
+    subscriberFolders = [
+        sub
+        for sub in subscriberFolders
+        if not sub.get("Prefix", "").endswith(PROXY_SUFFIX)
+    ]
 elif params.get("dataType", "").lower() == "proxy":
-    subscriberFolders = [sub for sub in subscriberFolders if sub.get("Prefix", "").endswith(PROXY_SUFFIX)]
+    subscriberFolders = [
+        sub for sub in subscriberFolders if sub.get("Prefix", "").endswith(PROXY_SUFFIX)
+    ]
 print(subscriberFolders)
 
 yearList = []

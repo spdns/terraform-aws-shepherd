@@ -195,6 +195,14 @@ data "aws_iam_policy_document" "shepherd_users_other" {
   statement {
     effect = "Allow"
     actions = [
+      "cloudtrail:*",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
       "quicksight:*",
     ]
     resources = [
@@ -359,6 +367,7 @@ data "aws_iam_policy_document" "shepherd_engineers" {
     actions = [
       "acm:*",
       "athena:*",
+      "cloudtrail:*",
       "ec2:*",
       "glue:*",
       "iam:Get*",
@@ -369,6 +378,7 @@ data "aws_iam_policy_document" "shepherd_engineers" {
       "quicksight:*",
       "rds:*",
       "redshift:*",
+      "support:*",
       "ssm:*",
       "s3:*",
       "tag:*",
@@ -516,6 +526,16 @@ data "aws_iam_policy_document" "shepherd_redshift_glue" {
     resources = ["*"]
   }
 }
+data "aws_iam_policy_document" "shepherd_redshift_kms" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "kms:ListAliases",
+      "kms:Decrypt",
+    ]
+    resources = ["*"]
+  }
+}
 
 resource "aws_iam_policy" "shepherd_redshift_s3" {
   name        = "app-${var.project}-${var.environment}-redshift-s3"
@@ -535,6 +555,12 @@ resource "aws_iam_policy" "shepherd_redshift_glue" {
   policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_redshift_glue.json))
 }
 
+resource "aws_iam_policy" "shepherd_redshift_kms" {
+  name        = "app-${var.project}-${var.environment}-redshift-kms"
+  description = "Policy for 'shepherd_redshift' kms access"
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_redshift_kms.json))
+}
+
 resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_s3" {
   role       = aws_iam_role.shepherd_redshift.name
   policy_arn = aws_iam_policy.shepherd_redshift_s3.arn
@@ -548,6 +574,11 @@ resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_a
 resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_glue" {
   role       = aws_iam_role.shepherd_redshift.name
   policy_arn = aws_iam_policy.shepherd_redshift_glue.arn
+}
+
+resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_kms" {
+  role       = aws_iam_role.shepherd_redshift.name
+  policy_arn = aws_iam_policy.shepherd_redshift_kms.arn
 }
 
 #

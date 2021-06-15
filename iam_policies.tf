@@ -195,14 +195,6 @@ data "aws_iam_policy_document" "shepherd_users_other" {
   statement {
     effect = "Allow"
     actions = [
-      "cloudtrail:*",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
       "quicksight:*",
     ]
     resources = [

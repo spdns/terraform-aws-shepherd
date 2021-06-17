@@ -302,6 +302,10 @@ resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_othe
   policy_arn = aws_iam_policy.shepherd_users_other.arn
 }
 
+resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_s3" {
+  role       = aws_iam_role.shepherd_users.name
+  policy_arn = aws_iam_policy.shepherd_athena_primarywg.arn
+}
 resource "aws_iam_role_policy_attachment" "shepherd_redshift" {
   // https://stackoverflow.com/questions/45486041/how-to-attach-multiple-iam-policies-to-iam-roles-using-terraform
   for_each = toset([
@@ -394,6 +398,10 @@ resource "aws_iam_policy" "shepherd_engineers" {
 resource "aws_iam_role_policy_attachment" "shepherd_engineers_policy_attachment" {
   role       = aws_iam_role.shepherd_engineers.name
   policy_arn = aws_iam_policy.shepherd_engineers.arn
+}
+resource "aws_iam_role_policy_attachment" "shepherd_users_policy_attachment_s3" {
+  role       = aws_iam_role.shepherd_engineers.name
+  policy_arn = aws_iam_policy.shepherd_athena_primarywg.arn
 }
 
 #
@@ -529,6 +537,20 @@ data "aws_iam_policy_document" "shepherd_redshift_kms" {
   }
 }
 
+data "aws_iam_policy_document" "shepherd_athena_primarywg"{
+  statement {
+    effect = "Deny"
+    actions = [
+      "athena:*"
+    ]
+    resource= format("arn:%s:athena:%s:%s:workgroup/primary",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+        data.aws_caller_identity.current.account_id,
+      )
+  }
+}
+
 resource "aws_iam_policy" "shepherd_redshift_s3" {
   name        = "app-${var.project}-${var.environment}-redshift-s3"
   description = "Policy for 'shepherd_redshift' s3 access"
@@ -551,6 +573,12 @@ resource "aws_iam_policy" "shepherd_redshift_kms" {
   name        = "app-${var.project}-${var.environment}-redshift-kms"
   description = "Policy for 'shepherd_redshift' kms access"
   policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_redshift_kms.json))
+}
+
+resource "aws_iam_policy" "shepherd_athena_primarywg" {
+  name      ="app-${var.project}-${var.environment}-athena-preventprimary"
+  description = "Policy to prevent use of primary wg"
+  policy = jsondecode(jsondecode(data.aws__iam_policy_document.shepherd_athena_primarywg))
 }
 
 resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_s3" {

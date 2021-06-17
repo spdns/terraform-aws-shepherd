@@ -543,11 +543,11 @@ data "aws_iam_policy_document" "shepherd_athena_primarywg" {
     actions = [
       "athena:*"
     ]
-    resource = format("arn:%s:athena:%s:%s:workgroup/primary",
+    resources = [format("arn:%s:athena:%s:%s:workgroup/primary",
       data.aws_partition.current.partition,
       data.aws_region.current.name,
-      data.aws_caller_identity.current.account_id,
-    )
+      data.aws_caller_identity.current.account_id
+    )]
   }
 }
 
@@ -578,7 +578,7 @@ resource "aws_iam_policy" "shepherd_redshift_kms" {
 resource "aws_iam_policy" "shepherd_athena_primarywg" {
   name        = "app-${var.project}-${var.environment}-athena-preventprimary"
   description = "Policy to prevent use of primary wg"
-  policy      = jsondecode(jsondecode(data.aws__iam_policy_document.shepherd_athena_primarywg))
+  policy      = jsonencode(jsondecode(data.aws_iam_policy_document.shepherd_athena_primarywg.json))
 }
 
 resource "aws_iam_role_policy_attachment" "shepherd_redshift_policy_attachment_s3" {

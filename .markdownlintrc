@@ -6,6 +6,6 @@
   "no-multiple-blanks": false,
   "fenced-code-language": false,
   "no-inline-html": {
-    "allowed_elements": ["br", "pre","a"]
+    "allowed_elements": ["a", "br", "pre"]
   }
 }

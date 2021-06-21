@@ -541,7 +541,19 @@ data "aws_iam_policy_document" "shepherd_athena_primarywg" {
   statement {
     effect = "Deny"
     actions = [
-      "athena:*"
+      "athena:CreateDataCatalog",
+      "athena:UpdateDataCatalog",
+      "athena:CreatePreparedStatement",
+      "athena:StartQueryExecution",
+      "athena:UpdatePreparedStatement",
+      "athena:DeleteWorkGroup",
+      "athena:DeletePreparedStatement",
+      "athena:DeleteNamedQuery",
+      "athena:UpdateWorkGroup",
+      "athena:CreateWorkGroup",
+      "athena:CreateNamedQuery",
+      "athena:StopQueryExecution",
+      "athena:DeleteDataCatalog",
     ]
     resources = [format("arn:%s:athena:%s:%s:workgroup/primary",
       data.aws_partition.current.partition,

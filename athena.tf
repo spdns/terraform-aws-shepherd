@@ -51,6 +51,26 @@ GO
 EOT
 }
 
+resource "aws_athena_named_query" "create_view_proxy" {
+  count = length(var.subscriber_buckets)
+
+  name        = format("%s-%s-create-proxy-view", local.glue_database_name_prefix, var.subscriber_buckets[count.index])
+  description = "Create view via Union"
+  workgroup   = aws_athena_workgroup.shepherd[count.index].id
+  database    = split(":", aws_glue_catalog_database.shepherd[count.index].id)[1]
+  query       = <<-EOT
+CREATE OR REPLACE VIEW shepherd_proxy_all
+AS
+%{for index, db in local.database_names~}
+SELECT * FROM ${db}.${local.proxy_table_name}
+%{if index < length(local.database_names) - 1~}
+UNION ALL
+%{endif~}
+%{endfor~}
+GO
+EOT
+}
+
 data "template_file" "create_table" {
   count = length(var.subscriber_buckets)
 

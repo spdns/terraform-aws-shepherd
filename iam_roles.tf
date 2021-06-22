@@ -1,8 +1,9 @@
 
 resource "aws_iam_role" "shepherd_users" {
-  name               = "shepherd_users"
-  description        = "Role for 'shepherd_users' to use"
-  assume_role_policy = data.aws_iam_policy_document.assume_role_policy.json
+  name                 = "shepherd_users"
+  max_session_duration = 36000
+  description          = "Role for 'shepherd_users' to use"
+  assume_role_policy   = data.aws_iam_policy_document.assume_role_policy.json
 }
 
 resource "aws_iam_role" "shepherd_engineers" {

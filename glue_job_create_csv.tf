@@ -48,7 +48,8 @@ resource "aws_glue_job" "create_csv" {
     "--region" = data.aws_region.current.name
     // Athena
     "--athenaDatabase" = replace(replace(format("%s-%s", local.glue_database_name_prefix, var.csv_jobs[count.index]["Bucket"]), "-", "_"), ".", "_")
-    "--athenaTable"    = local.table_name
+    // Table Name is either proxy_data or dns_data
+    "--athenaTable" = var.csv_jobs[count.index]["TableName"]
     // Parent Policies
     "--parentPolicies" = var.csv_jobs[count.index]["Policies"]
     // Date Range

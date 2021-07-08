@@ -50,6 +50,7 @@ jobs:
     executor: python
     steps:
       - checkout
+      - run: python -version
       - run: pip install black==20.8b1 flake8==3.8.4
       - run: black scripts/*.py
       - run: flake8 scripts/*.py

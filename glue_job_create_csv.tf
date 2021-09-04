@@ -1,6 +1,6 @@
 
 locals {
-  script_create_csv = "scripts/create_csv.py"
+  script_create_csv = "scripts/create_csv_incremental.py"
 }
 
 resource "aws_s3_bucket_object" "create_csv" {
@@ -21,10 +21,10 @@ resource "aws_glue_job" "create_csv" {
   description = format("The %s %s job to create the CSV from shepherd data for %s", var.project, var.environment, var.csv_jobs[count.index]["Name"])
   role_arn    = aws_iam_role.glue_role.arn
 
-  glue_version = "1.0"
+  glue_version = "2.0"
 
   command {
-    name            = "pythonshell"
+    name            = "glueetl"
     python_version  = "3"
     script_location = format("s3://%s/%s", module.glue_tmp_bucket.id, aws_s3_bucket_object.create_csv.key)
   }
@@ -55,6 +55,9 @@ resource "aws_glue_job" "create_csv" {
     // Date Range
     "--maxHoursAgo" = var.csv_jobs[count.index]["HoursAgo"]
     "--fullDays"    = "true"
+    // S3 Input
+    "--inputBucket"        = aws_s3_bucket.csv_results.id
+    "--inputPrefix"        = "csv"
     // Results
     "--outputBucket"       = aws_s3_bucket.csv_results.id
     "--outputDir"          = "csv"
@@ -64,8 +67,7 @@ resource "aws_glue_job" "create_csv" {
     "--subscriber"         = var.csv_jobs[count.index]["Subscriber"]
     "--receiver"           = var.csv_jobs[count.index]["Receiver"]
     "--verbose"            = "true"
-    "--timeout_sec"        = local.timeout_minutes * 60
-    "--deleteMetadataFile" = "true"
+    // Shouldn't be needed for Spark-based job (cf. previous boto3-based job)
     "--workgroup"          = format("%s-%s-workgroup-%s", var.project, var.environment, var.csv_jobs[count.index]["Bucket"])
   }
 
@@ -75,8 +77,9 @@ resource "aws_glue_job" "create_csv" {
 
   security_configuration = aws_glue_security_configuration.event_data.id
 
-  timeout      = local.timeout_minutes // minutes
-  max_capacity = 0.0625                // Update to 1.0 if needed, but most of the work happens in Athena, not Glue.
+  timeout           = local.timeout_minutes // minutes
+  worker_type       = "Standard" // Adjust to "G.1X" if needed
+  number_of_workers = 10 // Adjust if needed
 
   tags = local.project_tags
 }

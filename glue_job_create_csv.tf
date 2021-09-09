@@ -56,19 +56,19 @@ resource "aws_glue_job" "create_csv" {
     "--maxHoursAgo" = var.csv_jobs[count.index]["HoursAgo"]
     "--fullDays"    = "true"
     // S3 Input
-    "--inputBucket"        = aws_s3_bucket.csv_results.id
-    "--inputPrefix"        = "csv"
+    "--inputBucket" = aws_s3_bucket.csv_results.id
+    "--inputPrefix" = "csv"
     // Results
-    "--outputBucket"       = aws_s3_bucket.csv_results.id
-    "--outputDir"          = "csv"
-    "--outputFilename"     = var.csv_jobs[count.index]["OutputFilename"]
-    "--salt"               = data.aws_ssm_parameter.salt.value
-    "--ordinal"            = var.csv_jobs[count.index]["Ordinal"]
-    "--subscriber"         = var.csv_jobs[count.index]["Subscriber"]
-    "--receiver"           = var.csv_jobs[count.index]["Receiver"]
-    "--verbose"            = "true"
+    "--outputBucket"   = aws_s3_bucket.csv_results.id
+    "--outputDir"      = "csv"
+    "--outputFilename" = var.csv_jobs[count.index]["OutputFilename"]
+    "--salt"           = data.aws_ssm_parameter.salt.value
+    "--ordinal"        = var.csv_jobs[count.index]["Ordinal"]
+    "--subscriber"     = var.csv_jobs[count.index]["Subscriber"]
+    "--receiver"       = var.csv_jobs[count.index]["Receiver"]
+    "--verbose"        = "true"
     // Shouldn't be needed for Spark-based job (cf. previous boto3-based job)
-    "--workgroup"          = format("%s-%s-workgroup-%s", var.project, var.environment, var.csv_jobs[count.index]["Bucket"])
+    "--workgroup" = format("%s-%s-workgroup-%s", var.project, var.environment, var.csv_jobs[count.index]["Bucket"])
   }
 
   execution_property {
@@ -78,8 +78,8 @@ resource "aws_glue_job" "create_csv" {
   security_configuration = aws_glue_security_configuration.event_data.id
 
   timeout           = local.timeout_minutes // minutes
-  worker_type       = "Standard" // Adjust to "G.1X" if needed
-  number_of_workers = 10 // Adjust if needed
+  worker_type       = "Standard"            // Adjust to "G.1X" if needed
+  number_of_workers = 10                    // Adjust if needed
 
   tags = local.project_tags
 }
